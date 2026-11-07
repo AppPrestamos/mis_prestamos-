@@ -1,0 +1,921 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mis préstamos (sin conexión)</title>
+<style>
+:root{
+  --bg:#070B0E; --surface:#111922; --surface-hover:#182330; --ink:#F0F6FC; --muted:#8B949E; --line:#212D3B;
+  --brand:#00FFCC; --brand-ink:#070B0E; --brand-soft:rgba(0,255,204,0.12);
+  --ok:#3FB950; --ok-bg:rgba(63,185,80,0.15); --warn:#D29922; --warn-bg:rgba(210,153,34,0.15); --bad:#F85149; --bad-bg:rgba(248,81,73,0.15);
+  --off:#8B949E; --off-bg:rgba(139,148,158,0.15); --info:#58A6FF; --info-bg:rgba(88,166,255,0.15);
+  color-scheme:dark;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:light){
+  :root[data-theme="light"]{
+    --bg:#F4F7FA; --surface:#FFFFFF; --surface-hover:#E9EDF2; --ink:#1A222C; --muted:#64748B; --line:#E2E8F0;
+    --brand:#008767; --brand-ink:#FFFFFF; --brand-soft:rgba(0,135,103,0.1);
+    --ok:#10B981; --ok-bg:rgba(16,185,129,0.12); --warn:#F59E0B; --warn-bg:rgba(245,158,11,0.12); --bad:#EF4444; --bad-bg:rgba(239,68,68,0.12);
+    --off:#64748B; --off-bg:rgba(100,116,139,0.12); --info:#3B82F6; --info-bg:rgba(59,130,246,0.12);
+    color-scheme:light;
+  }
+}
+:root[data-theme="light"]{
+  --bg:#F4F7FA; --surface:#FFFFFF; --surface-hover:#E9EDF2; --ink:#1A222C; --muted:#64748B; --line:#E2E8F0;
+  --brand:#008767; --brand-ink:#FFFFFF; --brand-soft:rgba(0,135,103,0.1);
+  --ok:#10B981; --ok-bg:rgba(16,185,129,0.12); --warn:#F59E0B; --warn-bg:rgba(245,158,11,0.12); --bad:#EF4444; --bad-bg:rgba(239,68,68,0.12);
+  --off:#64748B; --off-bg:rgba(100,116,139,0.12); --info:#3B82F6; --info-bg:rgba(59,130,246,0.12);
+  color-scheme:light;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,"IBM Plex Sans",-apple-system,"Segoe UI",Roboto,sans-serif;font-variant-numeric:tabular-nums;-webkit-text-size-adjust:100%}
+body.noscroll{overflow:hidden}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--brand)}
+h1,h2,h3{margin:0;font-weight:600;line-height:1.2}
+h1{font-size:1.6rem} h2{font-size:1.15rem} h3{font-size:1rem}
+:focus-visible{outline:3px solid var(--brand);outline-offset:2px;border-radius:6px}
+
+.app{display:grid;grid-template-columns:230px minmax(0,1fr);min-height:100vh}
+.side{position:sticky;top:env(safe-area-inset-top,0px);align-self:start;height:100vh;padding:22px 14px;border-right:1px solid var(--line);background:var(--surface);display:flex;flex-direction:column;gap:4px}
+.brand{font-weight:600;font-size:1.1rem;padding:0 10px 16px;color:var(--brand)}
+.nav a{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;text-decoration:none;color:var(--ink)}
+.nav a svg{width:20px;height:20px;flex:none;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.nav a[aria-current="page"]{background:var(--brand-soft);color:var(--brand);font-weight:600}
+.nav a:hover{background:var(--brand-soft)}
+main{padding:28px clamp(16px,4vw,40px) 60px;max-width:1100px;width:100%}
+.tabbar{display:none}
+
+.viewhead{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
+.viewhead .sub{color:var(--muted);margin:4px 0 0}
+.actions{display:flex;flex-wrap:wrap;gap:8px}
+.btn{white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:42px;padding:8px 16px;border-radius:10px;border:1px solid var(--line);background:var(--surface);cursor:pointer;text-decoration:none;color:var(--ink);font-weight:500}
+.btn:hover{border-color:var(--brand)}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+.btn.danger{color:var(--bad);border-color:var(--bad)}
+.btn.small{min-height:34px;padding:4px 12px;font-size:.9rem}
+.btn.ghost{background:transparent}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+
+.ledger{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:6px 18px;margin-bottom:10px}
+.ledger .lrow{display:grid;grid-template-columns:130px repeat(3,minmax(0,1fr));gap:12px;padding:14px 0;align-items:end}
+.ledger .lrow+.lrow{border-top:1px solid var(--line)}
+.ledger .cur{font-weight:600}
+.ledger .k{display:block;color:var(--muted);font-size:.82rem}
+.ledger .v{font-size:1.25rem;font-weight:600}
+.ledger .v.bad{color:var(--bad)}
+.stats{color:var(--muted);margin:0 0 26px}
+.stats b{color:var(--ink)}
+
+.sec{margin:26px 0 8px;display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.sec h2 small{color:var(--muted);font-weight:400;font-size:.9rem;margin-left:6px}
+.list{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 14px;padding:14px 16px;border-top:1px solid var(--line);cursor:pointer;align-items:center}
+.row:first-child{border-top:0}
+.row:hover{background:color-mix(in srgb,var(--brand-soft) 45%,transparent)}
+.row .main{min-width:0}
+.row .name{font-weight:600;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .meta{color:var(--muted);font-size:.88rem;display:block}
+.row .side2{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.row .amt{font-weight:600}
+.row .acts{grid-column:1 / -1;display:flex;flex-wrap:wrap;gap:8px}
+.empty{padding:26px 18px;color:var(--muted);text-align:center}
+.badge{display:inline-block;padding:2px 9px;border-radius:999px;font-size:.78rem;font-weight:600;white-space:nowrap}
+.badge.ok{background:var(--ok-bg);color:var(--ok)} .badge.warn{background:var(--warn-bg);color:var(--warn)}
+.badge.bad{background:var(--bad-bg);color:var(--bad)} .badge.off{background:var(--off-bg);color:var(--off)} .badge.info{background:var(--info-bg);color:var(--info)}
+
+.tools{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px}
+.search{flex:1 1 220px;min-height:42px;padding:8px 14px;border-radius:10px;border:1px solid var(--line);background:var(--surface)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{min-height:42px;padding:6px 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--brand);color:var(--brand-ink);border-color:var(--brand)}
+
+.cols{display:grid;gap:26px;grid-template-columns:minmax(0,1fr)}
+@media (min-width:1000px){ .cols{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr)} }
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+.kv{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 18px;margin:0}
+.kv div{min-width:0} .kv dt{color:var(--muted);font-size:.82rem} .kv dd{margin:0;font-weight:500;overflow-wrap:anywhere}
+.back{display:inline-flex;align-items:center;gap:6px;margin-bottom:12px;color:var(--muted);text-decoration:none}
+.note{padding:12px 0;border-top:1px solid var(--line)} .note:first-child{border-top:0}
+.note .when{color:var(--muted);font-size:.82rem;display:flex;justify-content:space-between;gap:8px}
+.note p{margin:4px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
+textarea{width:100%;min-height:84px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);resize:vertical}
+.table{width:100%;border-collapse:collapse;font-size:.92rem}
+.table th{text-align:left;color:var(--muted);font-weight:500;padding:6px 8px;border-bottom:1px solid var(--line)}
+.table td{padding:8px;border-bottom:1px solid var(--line)} .table .r{text-align:right}
+.tablewrap{overflow-x:auto}
+.warnbox{background:var(--warn-bg);color:var(--warn);border-radius:10px;padding:10px 14px;margin:12px 0}
+
+.scrim{position:fixed;inset:0;background:rgba(5,15,12,.5);z-index:20}
+.sheet{position:fixed;z-index:21;left:50%;top:50%;transform:translate(-50%,-50%);width:min(560px,calc(100vw - 24px));max-height:calc(100vh - 24px);display:flex;flex-direction:column;background:var(--surface);border-radius:16px;border:1px solid var(--line)}
+.sheet.wide{width:min(760px,calc(100vw - 24px))}
+.sheet header{display:flex;justify-content:space-between;align-items:center;padding:16px 18px;border-bottom:1px solid var(--line)}
+.sheet .x{border:0;background:transparent;font-size:1.6rem;line-height:1;cursor:pointer;min-width:42px;min-height:42px;border-radius:8px}
+.sheet-body{padding:16px 18px 20px;overflow:auto}
+label{display:block;margin:0 0 12px;font-weight:500;font-size:.92rem}
+label input,label select{display:block;width:100%;margin-top:4px;min-height:42px;padding:8px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);font-weight:400}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.hint{color:var(--muted);font-size:.86rem;margin:-4px 0 12px}
+.preview{background:var(--brand-soft);color:var(--ink);border-radius:10px;padding:10px 14px;margin:4px 0 14px;font-size:.92rem}
+.foot{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-top:8px}
+#toast{position:fixed;left:50%;transform:translateX(-50%);top:calc(14px + env(safe-area-inset-top,0px));z-index:40;max-width:calc(100vw - 32px)}
+#toast div{background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;margin-top:6px;box-shadow:0 4px 18px rgba(0,0,0,.25)}
+#toast div.err{background:var(--bad);color:#fff}
+
+@media (max-width:899px){
+  .app{display:block}
+  .side{display:none}
+  main{padding:18px 14px 110px}
+  h1{font-size:1.4rem}
+  .tabbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:10;background:var(--surface);border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom,0px))}
+  .tabbar a{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;text-decoration:none;color:var(--muted);font-size:.72rem;min-height:48px;border-radius:10px}
+  .tabbar a svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .tabbar a[aria-current="page"]{color:var(--brand);font-weight:600}
+  .ledger .lrow{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .ledger .cur{grid-column:1 / -1}
+  .ledger .v{font-size:1.05rem}
+  .sheet{left:0;right:0;bottom:0;top:auto;transform:none;width:100%;max-height:92vh;border-radius:18px 18px 0 0}
+  .sheet.wide{width:100%}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* Futuristic Neon & Glassmorphism Enhancements */
+body { background: radial-gradient(circle at top right, rgba(0,255,204,0.04), transparent 40%), var(--bg); }
+.side { background: linear-gradient(180deg, var(--surface) 0%, rgba(17,25,34,0.95) 100%); backdrop-filter: blur(12px); border-right: 1px solid var(--line); }
+.brand { font-family: system-ui, sans-serif; font-weight: 800; letter-spacing: -0.5px; background: linear-gradient(135deg, var(--brand), #58A6FF); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.card, .ledger, .list, .sheet { box-shadow: 0 8px 32px rgba(0, 0, 0, 0.24); border: 1px solid var(--line); border-radius: 16px; backdrop-filter: blur(8px); }
+.row:hover { background: var(--surface-hover); }
+.btn { border-radius: 12px; font-weight: 600; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+.btn.primary { background: linear-gradient(135deg, var(--brand), #00B4D8); color: var(--brand-ink); border: none; box-shadow: 0 4px 16px rgba(0,255,204,0.25); }
+.btn.primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
+.badge { border-radius: 8px; font-weight: 700; letter-spacing: 0.3px; padding: 3px 10px; }
+.search, input, select, textarea { border-radius: 12px; border: 1px solid var(--line); background: var(--bg); transition: border-color 0.2s, box-shadow 0.2s; }
+.search:focus, input:focus, select:focus, textarea:focus { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-soft); }
+
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand">Mis préstamos<br><small style="font-weight:400;color:var(--muted);font-size:.78rem">Versión sin conexión</small></div>
+    <nav class="nav" id="nav-side"></nav>
+  </aside>
+  <main id="view" aria-live="polite"></main>
+  <nav class="tabbar" id="nav-tab" aria-label="Secciones"></nav>
+</div>
+<div id="sheet-root"></div>
+<div id="toast" role="status"></div>
+
+<script>
+(function(){
+'use strict';
+
+/* ================= utilidades ================= */
+const $ = (s, r=document) => r.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad = n => String(n).padStart(2, '0');
+const iso = d => d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
+const pISO = s => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || ''); return m ? new Date(+m[1], +m[2]-1, +m[3]) : null; };
+const fdate = d => d ? pad(d.getDate()) + '/' + pad(d.getMonth()+1) + '/' + d.getFullYear() : '—';
+const fISO = s => fdate(pISO(s));
+const nf = new Intl.NumberFormat('es-BO', {minimumFractionDigits:2, maximumFractionDigits:2, useGrouping:'always'});
+const money = (v, cur) => (v == null || isNaN(v)) ? '—' : nf.format(v) + (cur ? ' ' + cur : '');
+const r2 = x => Math.round(x * 100) / 100;
+const num = x => {
+  if (x === '' || x == null) return null;
+  let s = String(x).trim().replace(/\s/g, '').replace(',', '.');
+  const parts = s.split('.'); if (parts.length > 2) s = parts.slice(0, -1).join('') + '.' + parts[parts.length-1];
+  const n = parseFloat(s); return isNaN(n) ? null : n;
+};
+const todayD = () => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), n.getDate()); };
+const DAY = 86400000;
+const normName = s => String(s || '').trim().replace(/\s+/g, ' ').toLowerCase();
+
+/* ================= cálculo de préstamos ================= */
+const PPM = {Mensual:1, Quincenal:2, Semanal:4};
+function dueDate(first, freq, k){
+  const d = pISO(first); if (!d) return null;
+  if (!freq || freq === 'Mensual') return new Date(d.getFullYear(), d.getMonth() + k - 1, d.getDate());
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() + (freq === 'Quincenal' ? 15 : 7) * (k - 1));
+}
+function calcLoan(L, pays, today, moraLeve){
+  const paid = r2((+L.pagadoAntes || 0) + pays.reduce((a, p) => a + (+p.monto || 0), 0));
+  const o = {paid, ok:false, estado:'Sin datos', sit:'Sin datos', saldo:null, total:null, cuota:null, sched:[], vencidas:0, vencido:0, prox:null, proxMonto:null, dias:0, extras:0};
+  const n = +L.cuotas, rate = (L.tasa === '' || L.tasa == null) ? NaN : +L.tasa;
+  if (!(L.monto > 0) || !(n >= 1) || isNaN(rate) || !pISO(L.primerVenc)) return o;
+  const ppm = PPM[L.frecuencia] || 1, cap = +L.monto, simple = L.tipo === 'Simple';
+  const items = []; let q;
+  if (simple){
+    // Simple: cada cuota paga el interés; el capital vence con la última cuota.
+    q = r2(cap * rate / ppm);
+    for (let k = 1; k <= n; k++) items.push({label:'Cuota ' + k, tipo:'interes', fecha:dueDate(L.primerVenc, L.frecuencia, k), monto:q});
+    const dn = dueDate(L.primerVenc, L.frecuencia, n);
+    items.push({label:'Capital', tipo:'capital', fecha:dn, monto:cap});
+    // Pasado el plazo, mientras quede capital sin pagar, el interés sigue sumándose período a período.
+    if (L.extender !== false){
+      const pp = pays.map(p => ({d:pISO(p.fecha), m:+p.monto || 0})).filter(p => p.d);
+      // "Pagado antes" no tiene fecha: se toma como interés ya pagado y no reduce el capital en el cálculo del interés extra.
+      const patDate = d => pp.reduce((a, p) => a + (p.d <= d ? p.m : 0), 0);
+      let intAcum = q * n, prev = dn, j = n + 1;
+      while (prev < today && j <= n + 600){
+        const capOut = cap - Math.min(cap, Math.max(0, patDate(prev) - intAcum));
+        if (capOut <= 0.005) break;
+        const dj = dueDate(L.primerVenc, L.frecuencia, j), qj = r2(capOut * rate / ppm);
+        items.push({label:'Interés extra ' + (j - n), tipo:'extra', fecha:dj, monto:qj});
+        intAcum += qj; prev = dj; j++;
+      }
+    }
+  } else {
+    const total0 = L.tipo === 'Francés' ? (rate === 0 ? cap : cap * (rate/ppm) / (1 - Math.pow(1 + rate/ppm, -n)) * n) : cap * (1 + rate * n / ppm);
+    q = r2(total0 / n); const last = r2(total0 - q * (n - 1));
+    for (let k = 1; k <= n; k++) items.push({label:'Cuota ' + k, tipo:'cuota', fecha:dueDate(L.primerVenc, L.frecuencia, k), monto:(k === n ? last : q)});
+  }
+  // Los pagos cubren primero los intereses/cuotas (en orden de fecha) y el capital al final.
+  let rem = paid;
+  const order = items.map((_, i) => i).sort((x, y) => ((items[x].tipo === 'capital') - (items[y].tipo === 'capital')) || (x - y));
+  order.forEach(i => {
+    const it = items[i], apl = Math.max(0, Math.min(it.monto, rem)); rem = r2(rem - apl);
+    it.aplicado = r2(apl); it.saldo = r2(it.monto - apl);
+    it.estado = it.saldo <= 0.005 ? 'Pagado' : (it.fecha < today ? 'Vencido' : (apl > 0 ? 'Parcial' : 'Pendiente'));
+  });
+  const total = r2(items.reduce((a, it) => a + it.monto, 0));
+  const saldo = r2(items.reduce((a, it) => a + it.saldo, 0));
+  o.ok = true; o.total = total; o.cuota = q; o.sched = items; o.saldo = saldo; o.extras = items.filter(i => i.tipo === 'extra').length;
+  o.estado = saldo <= 0.005 ? 'Cancelado' : 'Activo';
+  if (o.estado === 'Activo'){
+    const venc = items.filter(c => c.saldo > 0.005 && c.fecha < today);
+    o.vencidas = venc.length; o.vencido = r2(venc.reduce((a, c) => a + c.saldo, 0));
+    const next = items.filter(c => c.saldo > 0.005).sort((x, y) => x.fecha - y.fecha)[0];
+    if (next){ o.prox = next.fecha; o.proxMonto = next.saldo; o.dias = next.fecha < today ? Math.round((today - next.fecha) / DAY) : 0; }
+    o.sit = o.dias === 0 ? 'Al día' : (o.dias <= moraLeve ? 'Mora leve' : 'Moroso');
+  } else o.sit = 'Cancelado';
+  return o;
+}
+
+/* ================= estado ================= */
+let db = null, canWrite = true, ready = false, slow = false;
+const S = {clients:{}, loans:{}, payments:{}, notes:{}, archive:[], cfg:{moraLeve:30}};
+const loaded = {clients:false, loans:false, payments:false, notes:false, archive:false, cfg:false};
+let D = null, T = todayD();
+const UI = {q:'', f:'todos', hq:'', payLimit:60};
+let sheetRefresh = null;
+
+function derive(){
+  T = todayD();
+  const ml = Math.max(0, +S.cfg.moraLeve || 30);
+  const byLoanPay = {};
+  Object.entries(S.payments).forEach(([id, p]) => { (byLoanPay[String(p.loanId)] = byLoanPay[String(p.loanId)] || []).push(Object.assign({id}, p)); });
+  const loans = {}, byClient = {};
+  Object.entries(S.loans).forEach(([id, L]) => {
+    const pays = (byLoanPay[id] || []).sort((a, b) => (a.fecha || '').localeCompare(b.fecha || '') || (+a.id - +b.id));
+    const c = calcLoan(L, pays, T, ml); c.pays = pays;
+    loans[id] = {id, L, c};
+    (byClient[String(L.clienteId)] = byClient[String(L.clienteId)] || []).push(id);
+  });
+  const tot = {Bs:{prestado:0, cobrado:0, saldo:0, vencido:0}, '$us':{prestado:0, cobrado:0, saldo:0, vencido:0}};
+  let activos = 0, enMora = 0, cuotasVenc = 0, cancelados = 0, sinDatos = [];
+  Object.values(loans).forEach(({L, c}) => {
+    const t = tot[L.moneda] || tot.Bs;
+    t.prestado += +L.monto || 0; t.cobrado += c.paid;
+    if (c.estado === 'Sin datos'){ sinDatos.push(L); return; }
+    t.saldo += c.saldo || 0; t.vencido += c.vencido;
+    if (c.estado === 'Activo'){ activos++; cuotasVenc += c.vencidas; if (c.dias > 0) enMora++; } else cancelados++;
+  });
+  D = {loans, byClient, tot, activos, enMora, cuotasVenc, cancelados, sinDatos};
+}
+function clientInfo(cid){
+  const ids = D.byClient[String(cid)] || [];
+  const o = {ids, activos:0, saldo:{Bs:0, '$us':0}, vencido:{Bs:0, '$us':0}, dias:0, sit:'Sin préstamos'};
+  const rank = {'Moroso':3, 'Mora leve':2, 'Al día':1};
+  let best = 0;
+  ids.forEach(id => {
+    const {L, c} = D.loans[id];
+    if (c.estado === 'Activo'){
+      o.activos++; o.saldo[L.moneda] = (o.saldo[L.moneda] || 0) + c.saldo; o.vencido[L.moneda] = (o.vencido[L.moneda] || 0) + c.vencido;
+      o.dias = Math.max(o.dias, c.dias);
+      if ((rank[c.sit] || 0) > best){ best = rank[c.sit]; o.sit = c.sit; }
+    }
+  });
+  if (!o.activos && ids.length) o.sit = 'Sin saldo';
+  return o;
+}
+
+/* ================= base de datos ================= */
+async function put(coll, id, data){
+  try { await db.collection(coll).doc(String(id)).set(data); return true; }
+  catch (e) { toast('No se pudo guardar: ' + ((e && (e.message || e.code)) || 'error'), true); return false; }
+}
+async function remove(coll, id){
+  try { await db.collection(coll).doc(String(id)).delete(); return true; }
+  catch (e) { toast('No se pudo eliminar: ' + ((e && (e.message || e.code)) || 'error'), true); return false; }
+}
+const nextId = coll => String(Math.max(0, ...Object.keys(S[coll]).map(Number).filter(n => !isNaN(n))) + 1);
+
+function subscribeAll(){
+  const mk = (name) => db.collection(name).onSnapshot(snap => {
+    const m = {}; snap.docs.forEach(d => { m[d.id] = d.data(); });
+    S[name] = m; loaded[name] = true; schedule();
+  }, e => fatal(e));
+  ['clients', 'loans', 'payments', 'notes'].forEach(mk);
+  db.doc('archive/all').onSnapshot(s => { S.archive = (s.exists && s.data().items) || []; loaded.archive = true; schedule(); }, e => fatal(e));
+  db.doc('config/ajustes').onSnapshot(s => { if (s.exists) S.cfg = Object.assign({moraLeve:30}, s.data()); loaded.cfg = true; schedule(); }, e => fatal(e));
+}
+let fatalShown = false;
+function fatal(e){
+  if (fatalShown) return; fatalShown = true;
+  $('#view').innerHTML = '<div class="card"><h2>No se pudo leer la información</h2><p>' + esc((e && e.message) || 'Error desconocido') + '</p><p>Cierre y vuelva a abrir esta página desde su cuenta de Claude.</p></div>';
+}
+
+/* ================= interfaz base ================= */
+const ICON = {
+  inicio:'<svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>',
+  clientes:'<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M17 4a4 4 0 0 1 0 8M22 21a6 6 0 0 0-4-5.6"/></svg>',
+  pagos:'<svg viewBox="0 0 24 24"><path d="M3 7h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7zM3 7l12-3v3M17 14h2"/></svg>',
+  historial:'<svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5M12 7v5l3 2"/></svg>',
+  respaldo:'<svg viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg>'
+};
+const NAVS = [['inicio','Inicio'], ['clientes','Clientes'], ['pagos','Pagos'], ['historial','Historial'], ['respaldo','Respaldo']];
+function navHTML(cur){ return NAVS.map(([k, t]) => `<a href="#${k}" ${k === cur ? 'aria-current="page"' : ''}>${ICON[k]}<span>${t}</span></a>`).join(''); }
+function toast(msg, err){
+  const el = document.createElement('div'); if (err) el.className = 'err'; el.textContent = msg;
+  $('#toast').appendChild(el); setTimeout(() => el.remove(), err ? 6000 : 3200);
+}
+function badge(sit){
+  const m = {'Al día':'ok', 'Mora leve':'warn', 'Moroso':'bad', 'Cancelado':'off', 'Sin datos':'off', 'Activo':'info', 'Sin saldo':'off', 'Sin préstamos':'off', 'Pagado':'ok', 'Vencido':'bad', 'Parcial':'warn', 'Pendiente':'off'};
+  return `<span class="badge ${m[sit] || 'off'}">${esc(sit)}</span>`;
+}
+const digits = t => String(t || '').replace(/\D/g, '');
+function phoneFull(t){ let d = digits(t); if (!d) return ''; if (d.length === 8) d = '591' + d; return d; }
+const telHref = t => phoneFull(t) ? 'tel:+' + phoneFull(t) : '';
+const waHref = t => phoneFull(t) ? 'https://wa.me/' + phoneFull(t) : '';
+function contactBtns(t){
+  if (!phoneFull(t)) return '';
+  return `<a class="btn small" href="${telHref(t)}">Llamar</a><a class="btn small" href="${waHref(t)}" target="_blank" rel="noopener">WhatsApp</a>`;
+}
+const cname = cid => (S.clients[String(cid)] || {}).nombre || 'Cliente eliminado';
+
+/* ================= vistas ================= */
+let rafId = 0;
+function schedule(){ if (rafId) return; rafId = requestAnimationFrame(() => { rafId = 0; render(); }); }
+
+function render(){
+  const root = $('#view');
+  if (!ready && !Object.values(loaded).every(Boolean)){
+    $('#nav-side').innerHTML = navHTML(''); $('#nav-tab').innerHTML = navHTML('');
+    root.innerHTML = `<div class="card"><h2>Cargando sus datos…</h2>${slow ? '<p>Está tardando más de lo normal. Revise su conexión; los datos aparecerán cuando responda.</p>' : ''}</div>`;
+    return;
+  }
+  ready = true; derive();
+  const m = /^([a-z]+)(?:-(.*))?$/.exec((location.hash || '#inicio').slice(1)) || [null, 'inicio'];
+  let name = m[1], arg = m[2];
+  const views = {inicio:vInicio, clientes:vClientes, cliente:vCliente, pagos:vPagos, historial:vHistorial, respaldo:vRespaldo};
+  if (!views[name]) { name = 'inicio'; arg = null; }
+  const navKey = name === 'cliente' ? 'clientes' : name;
+  $('#nav-side').innerHTML = navHTML(navKey); $('#nav-tab').innerHTML = navHTML(navKey);
+  const keep = document.activeElement && document.activeElement.classList && document.activeElement.classList.contains('search') ? document.activeElement : null;
+  root.innerHTML = views[name](arg);
+  if (keep) { const n = $('.search', root); if (n) { n.focus(); n.setSelectionRange(n.value.length, n.value.length); } }
+  if (sheetRefresh) sheetRefresh();
+}
+window.addEventListener('hashchange', () => { window.scrollTo(0, 0); closeSheet(); schedule(); });
+
+function head(title, sub, actions){
+  return `<div class="viewhead"><div><h1>${esc(title)}</h1>${sub ? `<p class="sub">${sub}</p>` : ''}</div><div class="actions">${actions || ''}</div></div>`;
+}
+const W = () => canWrite;
+
+/* ---- Inicio ---- */
+function vInicio(){
+  const t = D.tot;
+  const row = (nm, cur) => `<div class="lrow"><div class="cur">${nm}</div>
+    <div><span class="k">Por cobrar</span><span class="v">${nf.format(t[cur].saldo)}</span></div>
+    <div><span class="k">Vencido</span><span class="v ${t[cur].vencido > 0 ? 'bad' : ''}">${nf.format(t[cur].vencido)}</span></div>
+    <div><span class="k">Cobrado</span><span class="v">${nf.format(t[cur].cobrado)}</span></div></div>`;
+  const atras = Object.values(D.loans).filter(x => x.c.estado === 'Activo' && x.c.dias > 0).sort((a, b) => b.c.dias - a.c.dias);
+  const prox = Object.values(D.loans).filter(x => x.c.estado === 'Activo' && x.c.dias === 0 && x.c.prox && (x.c.prox - T) / DAY <= 7).sort((a, b) => a.c.prox - b.c.prox);
+  const pct = D.activos ? Math.round(D.enMora * 100 / D.activos) : 0;
+  const cobroRow = x => {
+    const cl = S.clients[String(x.L.clienteId)] || {};
+    const late = x.c.dias > 0;
+    const when = late ? `${badge(x.c.sit)} <span class="meta">${x.c.dias} ${x.c.dias === 1 ? 'día' : 'días'} de atraso</span>` : `<span class="meta">${x.c.prox.getTime() === T.getTime() ? 'Vence hoy' : 'Vence ' + fdate(x.c.prox)}</span>`;
+    return `<div class="row" data-act="open-client" data-id="${esc(x.L.clienteId)}">
+      <div class="main"><span class="name">${esc(cl.nombre || 'Cliente eliminado')}</span><span class="meta">Préstamo ${esc(x.id)} · ${money(x.L.monto, x.L.moneda)}</span></div>
+      <div class="side2"><span class="amt">${money(late ? x.c.vencido : x.c.proxMonto, x.L.moneda)}</span>${when}</div>
+      <div class="acts">${W() ? `<button class="btn small primary" data-act="pay" data-loan="${esc(x.id)}">Registrar pago</button>` : ''}${contactBtns(cl.telefono)}</div></div>`;
+  };
+  const noClients = !Object.keys(S.clients).length;
+  let html = head('Para cobrar', `${atras.length} atrasados · ${prox.length} vencen en los próximos 7 días`,
+    W() ? '<button class="btn primary" data-act="pay">Registrar pago</button><button class="btn" data-act="new-client">Nuevo cliente</button>' : '');
+  if (noClients) return html + '<div class="card"><h2>Todavía no hay datos</h2><p>Agregue su primer cliente para empezar. Si ya cargó su información desde Excel, espere unos segundos y recargue.</p></div>';
+  html += backupNote();
+  html += `<div class="ledger">${row('Bolivianos (Bs)', 'Bs')}${row('Dólares ($us)', '$us')}</div>
+    <p class="stats"><b>${D.activos}</b> préstamos activos · <b>${D.enMora}</b> en mora (${pct}%) · <b>${D.cuotasVenc}</b> cuotas vencidas · <b>${D.cancelados + S.archive.length}</b> cancelados o finalizados</p>`;
+  if (D.sinDatos.length) html += `<div class="warnbox">${D.sinDatos.length} ${D.sinDatos.length === 1 ? 'préstamo tiene' : 'préstamos tienen'} datos incompletos (sin tasa, cuotas o fecha) y no se cuentan en los saldos: ${D.sinDatos.map(L => esc(cname(L.clienteId))).join(', ')}.</div>`;
+  html += `<div class="sec"><h2>Atrasados<small>más antiguos primero</small></h2>${atras.length > 8 ? '<button class="btn small" data-act="go-mora">Ver todos</button>' : ''}</div>`;
+  html += atras.length ? `<div class="list">${atras.slice(0, 8).map(cobroRow).join('')}</div>` : '<div class="list"><div class="empty">No hay pagos atrasados.</div></div>';
+  html += `<div class="sec"><h2>Próximos 7 días</h2></div>`;
+  html += prox.length ? `<div class="list">${prox.map(cobroRow).join('')}</div>` : '<div class="list"><div class="empty">No hay vencimientos en los próximos 7 días.</div></div>';
+  return html;
+}
+
+/* ---- Clientes ---- */
+function clientRow(cid){
+  const c = S.clients[cid], info = clientInfo(cid);
+  const sal = ['Bs', '$us'].filter(k => info.saldo[k] > 0).map(k => `<span class="amt">${money(info.saldo[k], k)}</span>`).join('');
+  const sub = [c.telefono ? esc(c.telefono) : 'Sin teléfono', info.activos ? `${info.activos} ${info.activos === 1 ? 'préstamo activo' : 'préstamos activos'}` : (info.ids.length ? 'Sin saldo' : 'Sin préstamos')].join(' · ');
+  return `<div class="row" data-act="open-client" data-id="${esc(cid)}"><div class="main"><span class="name">${esc(c.nombre)}</span><span class="meta">${sub}</span></div>
+    <div class="side2">${sal}${info.activos ? badge(info.sit) : ''}</div></div>`;
+}
+function clientList(){
+  const q = normName(UI.q);
+  let ids = Object.keys(S.clients).filter(id => {
+    const c = S.clients[id];
+    if (q && !(normName(c.nombre).includes(q) || digits(c.telefono).includes(q.replace(/\D/g, '') || '\u0000'))) return false;
+    const info = clientInfo(id);
+    if (UI.f === 'mora') return info.dias > 0;
+    if (UI.f === 'aldia') return info.activos > 0 && info.dias === 0;
+    if (UI.f === 'activos') return info.activos > 0;
+    return true;
+  });
+  ids.sort((a, b) => (clientInfo(b).dias - clientInfo(a).dias) || normName(S.clients[a].nombre).localeCompare(normName(S.clients[b].nombre), 'es'));
+  return ids.length ? `<div class="list">${ids.map(clientRow).join('')}</div>` : '<div class="list"><div class="empty">No hay clientes con ese filtro.</div></div>';
+}
+function vClientes(){
+  const chip = (k, t) => `<button class="chip" data-act="filter" data-f="${k}" aria-pressed="${UI.f === k}">${t}</button>`;
+  return head('Clientes', `${Object.keys(S.clients).length} clientes`, W() ? '<button class="btn primary" data-act="new-client">Nuevo cliente</button>' : '') +
+    `<div class="tools"><input class="search" type="search" placeholder="Buscar por nombre o teléfono" value="${esc(UI.q)}" aria-label="Buscar cliente" data-act="search"><div class="chips">${chip('todos', 'Todos')}${chip('activos', 'Con préstamo activo')}${chip('mora', 'En mora')}${chip('aldia', 'Al día')}</div></div><div id="clist">${clientList()}</div>`;
+}
+
+/* ---- Ficha de cliente ---- */
+function vCliente(cid){
+  const c = S.clients[String(cid)];
+  if (!c) return '<a class="back" href="#clientes">‹ Clientes</a><div class="card"><h2>No se encontró el cliente</h2></div>';
+  const info = clientInfo(cid);
+  const ids = info.ids.slice().sort((a, b) => +b - +a);
+  const idsAct = ids.filter(id => D.loans[id].c.estado !== 'Cancelado');
+  const nCanc = ids.length - idsAct.length;
+  const loc = c.direccion ? (/^https?:\/\//i.test(c.direccion) ? `<a href="${esc(c.direccion)}" target="_blank" rel="noopener">Ver ubicación en el mapa</a>` : esc(c.direccion)) : '—';
+  const cal = c.calificacion ? `<span class="badge info">${esc(c.calificacion)}</span>` : '';
+  const sums = ['Bs', '$us'].filter(k => info.saldo[k] > 0 || info.vencido[k] > 0).map(k => `<div><dt>Saldo ${k}</dt><dd>${money(info.saldo[k])}</dd></div><div><dt>Vencido ${k}</dt><dd>${info.vencido[k] > 0 ? '<span class="badge bad">' + money(info.vencido[k]) + '</span>' : money(0)}</dd></div>`).join('');
+  const loanRows = idsAct.map(id => {
+    const {L, c: k} = D.loans[id];
+    const det = k.ok ? (k.estado === 'Cancelado' ? 'Cancelado' : (k.prox ? 'Próx. vence ' + fdate(k.prox) : '')) : 'Faltan datos';
+    return `<div class="row" data-act="open-loan" data-loan="${esc(id)}"><div class="main"><span class="name">${money(L.monto, L.moneda)}</span><span class="meta">Préstamo ${esc(id)}${L.fecha ? ' · desde ' + fISO(L.fecha) : ''}${det ? ' · ' + esc(det) : ''}</span></div>
+      <div class="side2"><span class="amt">${k.ok ? money(k.saldo, L.moneda) : '—'}</span>${badge(k.ok ? k.sit : 'Sin datos')}</div></div>`;
+  }).join('');
+  const notes = Object.entries(S.notes).filter(([, n]) => String(n.clienteId) === String(cid)).sort((a, b) => (b[1].fecha || '').localeCompare(a[1].fecha || '') || (+b[0] - +a[0]));
+  const old = (c.notasExcel || []).map(t => `<div class="note"><div class="when"><span>Del Excel</span></div><p>${esc(t)}</p></div>`).join('');
+  const nhtml = notes.map(([id, n]) => `<div class="note"><div class="when"><span>${fISO(n.fecha)}</span>${W() ? `<button class="btn small ghost" data-act="del-note" data-id="${esc(id)}" aria-label="Eliminar nota">Eliminar</button>` : ''}</div><p>${esc(n.texto)}</p></div>`).join('');
+  return `<a class="back" href="#clientes">‹ Clientes</a>` +
+    head(c.nombre, [cal, c.telefono ? esc(c.telefono) : ''].filter(Boolean).join(' · '),
+      `${contactBtns(c.telefono)}${W() ? '<button class="btn" data-act="edit-client" data-id="' + esc(cid) + '">Editar datos</button>' : ''}`) +
+    `<div class="cols"><div>
+      <div class="card"><dl class="kv"><div><dt>Ubicación</dt><dd>${loc}</dd></div><div><dt>Préstamos activos</dt><dd>${info.activos}</dd></div>${sums}</dl></div>
+      <div class="sec"><h2>Préstamos<small>${idsAct.length}</small></h2>${W() ? `<button class="btn small primary" data-act="new-loan" data-id="${esc(cid)}">Nuevo préstamo</button>` : ''}</div>
+      ${idsAct.length ? `<div class="list">${loanRows}</div>` : `<div class="list"><div class="empty">${nCanc ? 'No tiene préstamos activos.' : 'Este cliente no tiene préstamos.'}</div></div>`}
+      ${nCanc ? `<p class="hint" style="margin-top:10px">${nCanc} ${nCanc === 1 ? 'préstamo cancelado pasó' : 'préstamos cancelados pasaron'} al Historial. <button class="btn small ghost" data-act="hist-client" data-id="${esc(cid)}">Ver en Historial</button></p>` : ''}
+      ${W() && !ids.length ? `<p><button class="btn small danger" data-act="del-client" data-id="${esc(cid)}">Eliminar cliente</button></p>` : ''}
+    </div><div>
+      <div class="sec" style="margin-top:0"><h2>Notas</h2></div>
+      ${W() ? `<div class="card"><textarea id="newnote" placeholder="Escriba una nota sobre este cliente" aria-label="Nueva nota"></textarea><div class="foot"><button class="btn primary" data-act="add-note" data-id="${esc(cid)}">Guardar nota</button></div></div>` : ''}
+      <div class="card" style="margin-top:10px">${nhtml || old ? nhtml + old : '<div class="empty" style="padding:6px">Aún no hay notas.</div>'}</div>
+    </div></div>`;
+}
+
+/* ---- Pagos ---- */
+function vPagos(){
+  const all = Object.entries(S.payments).sort((a, b) => (b[1].fecha || '').localeCompare(a[1].fecha || '') || (+b[0] - +a[0]));
+  const rows = all.slice(0, UI.payLimit).map(([id, p]) => {
+    const l = S.loans[String(p.loanId)] || {};
+    return `<div class="row" data-act="open-loan" data-loan="${esc(p.loanId)}"><div class="main"><span class="name">${esc(cname(l.clienteId))}</span><span class="meta">${fISO(p.fecha)} · Préstamo ${esc(p.loanId)} · ${esc(p.concepto || '')}</span></div>
+      <div class="side2"><span class="amt">${money(p.monto, l.moneda)}</span>${W() ? `<button class="btn small ghost" data-act="del-pay" data-id="${esc(id)}">Eliminar</button>` : ''}</div></div>`;
+  }).join('');
+  return head('Pagos', `${all.length} pagos registrados`, W() ? '<button class="btn primary" data-act="pay">Registrar pago</button>' : '') +
+    (all.length ? `<div class="list">${rows}</div>${all.length > UI.payLimit ? '<p><button class="btn" data-act="more-pays">Mostrar más</button></p>' : ''}` : '<div class="list"><div class="empty">Todavía no hay pagos registrados. Registre el primero con el botón de arriba.</div></div>');
+}
+
+/* ---- Historial ---- */
+function histItems(){
+  const q = normName(UI.hq);
+  const done = Object.values(D.loans).filter(x => x.c.estado === 'Cancelado').map(x => {
+    const last = x.c.pays.length ? x.c.pays[x.c.pays.length - 1].fecha : null;
+    return {kind:'app', id:x.id, cid:x.L.clienteId, nombre:cname(x.L.clienteId), monto:x.L.monto, moneda:x.L.moneda, total:x.c.paid, cierre:last, orden:last || x.L.fecha || ''};
+  });
+  const old = S.archive.map(a => ({kind:'excel', a, nombre:a.nombre || 'Sin nombre', orden:a.cierre || a.fin || a.inicio || ''}));
+  return done.concat(old).filter(it => !q || normName(it.nombre).includes(q)).sort((x, y) => (y.orden || '').localeCompare(x.orden || ''));
+}
+function histRow(it){
+  if (it.kind === 'app'){
+    return `<div class="row" data-act="open-loan" data-loan="${esc(it.id)}"><div class="main"><span class="name">${esc(it.nombre)}</span>
+      <span class="meta">Préstamo ${esc(it.id)} · ${it.cierre ? 'cancelado el ' + fISO(it.cierre) : 'cancelado'} · pagado ${money(it.total, it.moneda)}</span></div>
+      <div class="side2"><span class="amt">${money(it.monto, it.moneda)}</span>${badge('Cancelado')}</div>
+      <div class="acts"><button class="btn small" data-act="open-client" data-id="${esc(it.cid)}">Ver cliente</button></div></div>`;
+  }
+  const a = it.a;
+  return `<div class="row" style="cursor:default"><div class="main"><span class="name">${esc(a.nombre || 'Sin nombre')}</span>
+    <span class="meta">${a.inicio ? fISO(a.inicio) : ''}${a.fin ? ' → ' + fISO(a.fin) : ''}${a.plazo ? ' · ' + esc(a.plazo) : ''}${a.tasa != null ? ' · ' + Math.round(a.tasa * 10000) / 100 + '% mensual' : ''}</span>
+    ${a.detalle ? `<span class="meta">${esc(a.detalle)}</span>` : ''}</div><div class="side2"><span class="amt">${money(a.monto, a.moneda)}</span>${a.estado ? badge(a.estado) : ''}</div></div>`;
+}
+function vHistorial(){
+  const items = histItems();
+  const nApp = Object.values(D.loans).filter(x => x.c.estado === 'Cancelado').length;
+  return head('Historial', `${nApp + S.archive.length} préstamos cancelados o finalizados · los préstamos pasan aquí solos cuando se paga todo`, '') +
+    `<div class="tools"><input class="search" type="search" placeholder="Buscar por nombre" value="${esc(UI.hq)}" aria-label="Buscar en el historial" data-act="hsearch"></div><div id="hlist" class="list">${items.map(histRow).join('') || '<div class="empty">Sin resultados.</div>'}</div>`;
+}
+
+/* ---- Respaldo ---- */
+function vRespaldo(){
+  return head('Respaldo y ajustes', '', '') +
+    `<div class="warnbox">Versión sin conexión: sus datos se guardan solo en este navegador de este computador. Si borra los datos de navegación o abre el archivo en otro navegador, no los verá. Descargue una copia con frecuencia.</div>
+    <div class="card"><h3>Copia de seguridad</h3><p class="hint" style="margin:6px 0 12px">Descargue todos sus clientes, préstamos, pagos y notas. El Excel sirve para revisar; la copia completa (JSON) sirve para restaurar.</p>
+      <div class="actions"><button class="btn primary" data-act="export-xlsx">Descargar Excel</button><button class="btn" data-act="export-json">Descargar copia completa (JSON)</button></div></div>
+    <div class="card" style="margin-top:14px"><h3>Restaurar una copia</h3><p class="hint" style="margin:6px 0 12px">Cargue un archivo JSON descargado antes (desde esta versión o desde la aplicación en línea). Reemplaza todos los datos de este navegador.</p>
+      <div class="actions"><button class="btn" data-act="pick-restore">Elegir archivo de copia…</button></div><input type="file" id="restore-file" accept=".json,application/json" hidden></div>
+    <div class="card" style="margin-top:14px"><h3>Mora leve</h3><p class="hint" style="margin:6px 0 12px">Hasta cuántos días de atraso se muestra “Mora leve”. Más allá se muestra “Moroso”.</p>
+      <form data-form="cfg" class="actions" style="align-items:end"><label style="margin:0">Días<input name="dias" inputmode="numeric" value="${esc(S.cfg.moraLeve)}" style="width:110px"></label><button class="btn">Guardar</button></form></div>`;
+}
+
+/* ================= ventanas (hojas) ================= */
+const sheetRoot = $('#sheet-root');
+function openSheet(title, html, opt){
+  opt = opt || {};
+  const prev = $('.sheet-body', sheetRoot); const keepTop = prev ? prev.scrollTop : 0;
+  sheetRoot.innerHTML = `<div class="scrim" data-act="close-sheet"></div><div class="sheet ${opt.wide ? 'wide' : ''}" role="dialog" aria-modal="true" aria-label="${esc(title)}"><header><h2>${esc(title)}</h2><button class="x" data-act="close-sheet" aria-label="Cerrar">×</button></header><div class="sheet-body">${html}</div></div>`;
+  document.body.classList.add('noscroll');
+  const b = $('.sheet-body', sheetRoot); if (b) b.scrollTop = keepTop;
+  if (!opt.keep){ const f = $('input:not([type=hidden]),select,textarea', sheetRoot); if (f) f.focus(); }
+}
+function closeSheet(){ sheetRoot.innerHTML = ''; sheetRefresh = null; document.body.classList.remove('noscroll'); }
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && sheetRoot.firstChild) closeSheet(); });
+function confirmSheet(title, msg, okLabel, onOk){
+  sheetRefresh = null;
+  openSheet(title, `<p>${msg}</p><div class="foot"><button class="btn" data-act="close-sheet">Cancelar</button><button class="btn danger" id="confirm-ok">${esc(okLabel)}</button></div>`);
+  $('#confirm-ok').addEventListener('click', async () => { $('#confirm-ok').disabled = true; await onOk(); });
+}
+
+/* ---- cliente ---- */
+function clientForm(id){
+  const c = id ? S.clients[id] : {};
+  const opt = ['', 'Excelente', 'Bueno', 'Regular', 'Riesgoso'].map(v => `<option value="${v}" ${c.calificacion === v ? 'selected' : ''}>${v || 'Sin calificar'}</option>`).join('');
+  sheetRefresh = null;
+  openSheet(id ? 'Editar cliente' : 'Nuevo cliente', `<form data-form="client" data-id="${esc(id || '')}">
+    <label>Nombre y apellido<input name="nombre" required value="${esc(c.nombre)}" autocomplete="off"></label>
+    <label>Teléfono<input name="telefono" inputmode="tel" value="${esc(c.telefono)}" placeholder="Ej.: 70012345"></label>
+    <label>Dirección o enlace de ubicación<input name="direccion" value="${esc(c.direccion)}"></label>
+    <label>Calificación<select name="calificacion">${opt}</select></label>
+    <div class="foot">${id ? `<button type="button" class="btn danger" data-act="del-client" data-id="${esc(id)}" style="margin-right:auto">Eliminar cliente</button>` : ''}<button type="button" class="btn" data-act="close-sheet">Cancelar</button><button class="btn primary">Guardar</button></div></form>`);
+}
+
+/* ---- préstamo ---- */
+const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+function firstDueFrom(fechaISO, freq){
+  const d = pISO(fechaISO); if (!d) return '';
+  if (freq === 'Quincenal') return iso(addDays(d, 15));
+  if (freq === 'Semanal') return iso(addDays(d, 7));
+  return iso(new Date(d.getFullYear(), d.getMonth() + 1, d.getDate()));
+}
+function loanForm(cid, id){
+  const L = id ? S.loans[id] : {moneda:'Bs', tipo:'Simple', frecuencia:'Mensual', fecha:iso(T), cuotas:'', tasa:'', pagadoAntes:0};
+  if (!id) L.primerVenc = firstDueFrom(L.fecha, L.frecuencia);
+  const sel = (name, vals, cur) => `<select name="${name}">${vals.map(v => `<option ${v === cur ? 'selected' : ''}>${v}</option>`).join('')}</select>`;
+  const invs = [...new Set(Object.values(S.loans).map(x => x.inversionista).filter(Boolean))];
+  const tasaTxt = L.tasa === '' || L.tasa == null ? '' : String(Math.round(L.tasa * 10000) / 100).replace('.', ',');
+  sheetRefresh = null;
+  openSheet(id ? `Editar préstamo ${id}` : 'Nuevo préstamo', `<form data-form="loan" data-id="${esc(id || '')}" data-cid="${esc(cid)}">
+    <p class="hint">Cliente: <b>${esc(cname(cid))}</b></p>
+    <div class="two"><label>Moneda${sel('moneda', ['Bs', '$us'], L.moneda)}</label><label>Monto prestado<input name="monto" inputmode="decimal" required value="${esc(L.monto == null ? '' : L.monto)}"></label></div>
+    <div class="two"><label>Interés mensual (%)<input name="tasa" inputmode="decimal" value="${esc(tasaTxt)}" placeholder="Ej.: 10"></label><label>Cantidad de cuotas<input name="cuotas" inputmode="numeric" value="${esc(L.cuotas == null ? '' : L.cuotas)}"></label></div>
+    <div class="two"><label>Tipo de interés${sel('tipo', ['Simple', 'Fijo', 'Francés'], L.tipo)}</label><label>Frecuencia${sel('frecuencia', ['Mensual', 'Quincenal', 'Semanal'], L.frecuencia)}</label></div>
+    <p class="hint">Simple: cada cuota paga solo el interés y el capital se paga al final. Fijo: cuotas iguales. Francés: cuota constante sobre saldo.</p>
+    <label style="display:flex;gap:10px;align-items:flex-start;font-weight:500"><input type="checkbox" name="extender" ${L.extender !== false ? 'checked' : ''} style="display:inline-block;width:20px;min-height:0;height:20px;margin:2px 0 0;flex:none"><span>Si pasa el plazo y no paga, seguir sumando el interés cada mes <span class="hint" style="display:block;margin:2px 0 0;font-weight:400">Solo para el tipo Simple. El cobro continúa hasta que se pague el capital.</span></span></label>
+    <div class="two"><label>Fecha del préstamo<input type="date" name="fecha" value="${esc(L.fecha || '')}"></label><label>Primer vencimiento<input type="date" name="primerVenc" value="${esc(L.primerVenc || '')}"></label></div>
+    <div id="loanpreview" class="preview"></div>
+    <label>Garantía<input name="garantia" value="${esc(L.garantia)}"></label>
+    <label>Inversionista<input name="inversionista" list="invs" value="${esc(L.inversionista)}"><datalist id="invs">${invs.map(v => `<option value="${esc(v)}">`).join('')}</datalist></label>
+    <label>Nota del préstamo<input name="nota" value="${esc(L.nota)}"></label>
+    ${id ? `<label>Pagado antes de usar la app<input name="pagadoAntes" inputmode="decimal" value="${esc(L.pagadoAntes || 0)}"></label><p class="hint">Es un estimado migrado de su Excel. Corríjalo o póngalo en 0 si prefiere registrar todos los pagos aquí.</p>` : ''}
+    <div class="foot"><button type="button" class="btn" data-act="close-sheet">Cancelar</button><button class="btn primary">Guardar préstamo</button></div></form>`);
+  const form = $('form[data-form=loan]'); form.dataset.touched = id ? '1' : '';
+  updateLoanPreview(form);
+}
+function readLoan(form){
+  const f = new FormData(form); const g = k => (f.get(k) == null ? '' : String(f.get(k)).trim());
+  const tasa = num(g('tasa'));
+  return {moneda:g('moneda') || 'Bs', monto:num(g('monto')), tasa:tasa == null ? null : Math.round(tasa * 100) / 10000, tipo:g('tipo'), frecuencia:g('frecuencia'),
+    cuotas:num(g('cuotas')) == null ? null : Math.round(num(g('cuotas'))), fecha:g('fecha') || null, primerVenc:g('primerVenc') || null,
+    garantia:g('garantia'), inversionista:g('inversionista'), nota:g('nota'), extender:form.extender ? form.extender.checked : true, pagadoAntes:f.has('pagadoAntes') ? (num(g('pagadoAntes')) || 0) : undefined};
+}
+function updateLoanPreview(form){
+  const L = readLoan(form), c = calcLoan(Object.assign({pagadoAntes:0}, L), [], T, 30);
+  $('#loanpreview', form).innerHTML = c.ok ? `${L.tipo === 'Simple' ? `Interés por cuota: <b>${money(c.cuota, L.moneda)}</b> · Capital al final: <b>${money(L.monto, L.moneda)}</b> · Total del contrato: <b>${money(c.total, L.moneda)}</b>` : `Cuota: <b>${money(c.cuota, L.moneda)}</b> · Total a devolver: <b>${money(c.total, L.moneda)}</b>`}` : 'Complete monto, interés, cuotas y primer vencimiento para ver el total.';
+}
+
+/* ---- detalle de préstamo ---- */
+function openLoan(id){
+  const x = D.loans[id]; if (!x) return;
+  const {L, c} = x;
+  const cl = S.clients[String(L.clienteId)] || {};
+  const kv = [['Monto prestado', money(L.monto, L.moneda)], ['Interés mensual', L.tasa == null ? '—' : Math.round(L.tasa * 10000) / 100 + '%'], ['Tipo y frecuencia', esc((L.tipo || '—') + ' · ' + (L.frecuencia || '—'))],
+    ['Cuotas del contrato', L.cuotas || '—'], ['Total a devolver', c.ok ? money(c.total, L.moneda) : '—'], ['Pagado', money(c.paid, L.moneda)], ['Saldo', c.ok ? money(c.saldo, L.moneda) : '—'], ['Estado', badge(c.ok ? c.sit : 'Sin datos')]];
+  if (L.garantia) kv.push(['Garantía', esc(L.garantia)]); if (L.inversionista) kv.push(['Inversionista', esc(L.inversionista)]);
+  const sched = c.ok ? `<div class="tablewrap"><table class="table"><thead><tr><th>Concepto</th><th>Vence</th><th class="r">Monto</th><th class="r">Pagado</th><th>Estado</th></tr></thead><tbody>${c.sched.map(s => `<tr><td>${esc(s.label)}</td><td>${fdate(s.fecha)}</td><td class="r">${nf.format(s.monto)}</td><td class="r">${nf.format(s.aplicado)}</td><td>${badge(s.estado)}</td></tr>`).join('')}</tbody></table></div>` : '<div class="warnbox">Faltan datos para calcular las cuotas: complete el interés, la cantidad de cuotas y el primer vencimiento.</div>';
+  const pays = c.pays.slice().reverse().map(p => `<tr><td>${fISO(p.fecha)}</td><td>${esc(p.concepto || '')}</td><td class="r">${nf.format(p.monto)}</td><td class="r">${W() ? `<button class="btn small ghost" data-act="del-pay" data-id="${esc(p.id)}">Eliminar</button>` : ''}</td></tr>`).join('');
+  const html = `<dl class="kv">${kv.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>
+    ${c.extras > 0 ? `<div class="warnbox">Pasó el plazo y el capital sigue sin pagarse: se sumaron <b>${c.extras}</b> ${c.extras === 1 ? 'mes' : 'meses'} de interés extra y se seguirán sumando cada mes. Los pagos cubren primero los intereses y al final el capital.</div>` : ''}
+    ${L.nota ? `<p class="hint" style="margin-top:12px">Nota: ${esc(L.nota)}</p>` : ''}
+    ${L.pagadoAntes > 0 ? `<p class="hint">Incluye ${money(L.pagadoAntes, L.moneda)} pagados antes de usar la app (estimado desde su Excel).</p>` : ''}
+    <div class="sec"><h3>Cuotas</h3></div>${sched}
+    <div class="sec"><h3>Pagos de este préstamo</h3></div>
+    ${pays ? `<div class="tablewrap"><table class="table"><thead><tr><th>Fecha</th><th>Concepto</th><th class="r">Monto</th><th></th></tr></thead><tbody>${pays}</tbody></table></div>` : '<p class="hint">Todavía no hay pagos registrados.</p>'}
+    <div class="foot">${W() ? `<button class="btn danger" data-act="del-loan" data-loan="${esc(id)}">Eliminar</button><button class="btn" data-act="edit-loan" data-loan="${esc(id)}">Editar</button>${c.estado !== 'Cancelado' ? `<button class="btn primary" data-act="pay" data-loan="${esc(id)}">Registrar pago</button>` : ''}` : ''}</div>`;
+  sheetRefresh = () => { if (D.loans[id]) openLoan(id); else closeSheet(); };
+  openSheet(`Préstamo ${id} · ${cl.nombre || ''}`, html, {wide:true, keep:!!$('.sheet', sheetRoot)});
+}
+
+/* ---- pago ---- */
+function payForm(pre){
+  pre = pre || {};
+  const activeLoans = Object.values(D.loans).filter(x => x.c.estado === 'Activo');
+  let cids = [...new Set(activeLoans.map(x => String(x.L.clienteId)))].sort((a, b) => normName(cname(a)).localeCompare(normName(cname(b)), 'es'));
+  if (!cids.length){ sheetRefresh = null; openSheet('Registrar pago', '<p>No hay préstamos activos con datos completos. Revise los préstamos de sus clientes.</p><div class="foot"><button class="btn" data-act="close-sheet">Cerrar</button></div>'); return; }
+  const preCid = pre.loanId ? String(S.loans[pre.loanId].clienteId) : (pre.cid || cids[0]);
+  sheetRefresh = null;
+  openSheet('Registrar pago', `<form data-form="pay">
+    <label>Cliente<select name="cid">${cids.map(c => `<option value="${esc(c)}" ${c === String(preCid) ? 'selected' : ''}>${esc(cname(c))}</option>`).join('')}</select></label>
+    <label>Préstamo<select name="loan"></select></label>
+    <div class="hint" id="payinfo"></div>
+    <div class="two"><label>Monto<input name="monto" inputmode="decimal" required></label><label>Fecha del pago<input type="date" name="fecha" required value="${iso(T)}"></label></div>
+    <label>Concepto<select name="concepto"><option>Pago cuota</option><option>Pago parcial</option><option>Adelanto</option><option>Cancelación total</option></select></label>
+    <div id="paypreview" class="preview"></div>
+    <div class="foot"><button type="button" class="btn" data-act="close-sheet">Cancelar</button><button class="btn primary">Guardar pago</button></div></form>`);
+  const form = $('form[data-form=pay]');
+  const fillLoans = (keepLoan) => {
+    const cid = form.cid.value;
+    const ls = activeLoans.filter(x => String(x.L.clienteId) === cid);
+    form.loan.innerHTML = ls.map(x => `<option value="${esc(x.id)}">N° ${esc(x.id)} · ${money(x.L.monto, x.L.moneda)} · saldo ${money(x.c.saldo)}</option>`).join('');
+    if (keepLoan && ls.some(x => x.id === String(keepLoan))) form.loan.value = String(keepLoan);
+    form.dataset.autoamt = '1'; refreshPay(form);
+  };
+  form.cid.addEventListener('change', () => fillLoans());
+  fillLoans(pre.loanId);
+}
+function refreshPay(form){
+  const x = D.loans[form.loan.value]; if (!x) return;
+  const c = x.c;
+  $('#payinfo', form).textContent = `Saldo: ${money(c.saldo, x.L.moneda)} · ` + (c.prox ? (c.dias > 0 ? `Atrasado ${c.dias} días` : 'Próxima cuota ' + fdate(c.prox)) + ' · ' + money(c.proxMonto, x.L.moneda) : '');
+  if (form.dataset.autoamt === '1'){
+    form.monto.value = form.concepto.value === 'Cancelación total' ? String(c.saldo).replace('.', ',') : String(c.dias > 0 ? c.vencido : c.proxMonto).replace('.', ',');
+    form.dataset.autoamt = '';
+  }
+  const m = num(form.monto.value);
+  const pv = $('#paypreview', form);
+  if (!m || m <= 0){ pv.textContent = 'Escriba el monto para ver cómo queda el préstamo.'; return; }
+  const after = calcLoan(x.L, c.pays.concat([{monto:m, fecha:form.fecha.value}]), T, 30);
+  pv.innerHTML = `Saldo después del pago: <b>${money(after.saldo, x.L.moneda)}</b>` + (m > c.saldo + 0.005 ? ' · <b>El monto supera el saldo actual.</b>' : '') + (after.estado === 'Cancelado' ? ' · El préstamo quedaría <b>cancelado</b>.' : '');
+}
+
+/* ================= acciones ================= */
+document.addEventListener('click', async e => {
+  const nv = e.target.closest('.nav a, .tabbar a'); if (nv && nv.getAttribute('href') === '#historial' && UI.hq){ UI.hq = ''; schedule(); }
+  const t = e.target.closest('[data-act]'); if (!t) return;
+  if (e.target.closest('a[href]') && t.dataset.act === 'open-client') return;
+  const a = t.dataset.act;
+  if (t.matches('input')) return;
+  if (['open-client', 'open-loan'].includes(a) && e.target.closest('button,a')) { if (e.target.closest('button,a') !== t) return; }
+  switch (a){
+    case 'close-sheet': closeSheet(); break;
+    case 'open-client': location.hash = '#cliente-' + t.dataset.id; break;
+    case 'open-loan': openLoan(t.dataset.loan); break;
+    case 'new-client': clientForm(); break;
+    case 'edit-client': clientForm(t.dataset.id); break;
+    case 'new-loan': loanForm(t.dataset.id); break;
+    case 'edit-loan': loanForm(S.loans[t.dataset.loan].clienteId, t.dataset.loan); break;
+    case 'pay': payForm({loanId:t.dataset.loan || undefined}); break;
+    case 'filter': UI.f = t.dataset.f; schedule(); break;
+    case 'hist-client': UI.hq = cname(t.dataset.id); location.hash = '#historial'; break;
+    case 'go-mora': UI.f = 'mora'; UI.q = ''; location.hash = '#clientes'; break;
+    case 'more-pays': UI.payLimit += 60; schedule(); break;
+    case 'add-note': {
+      const ta = $('#newnote'); const txt = ta.value.trim(); if (!txt){ toast('Escriba la nota primero.', true); return; }
+      if (await put('notes', nextId('notes'), {clienteId:String(t.dataset.id), fecha:iso(T), texto:txt, creado:new Date().toISOString()})){ toast('Nota guardada'); }
+      break; }
+    case 'del-note': confirmSheet('Eliminar nota', 'Se eliminará esta nota. No se puede deshacer.', 'Eliminar', async () => { if (await remove('notes', t.dataset.id)){ closeSheet(); toast('Nota eliminada'); } }); break;
+    case 'del-pay': { const p = S.payments[t.dataset.id]; if (!p) break;
+      const l = S.loans[String(p.loanId)] || {};
+      confirmSheet('Eliminar pago', `Se eliminará el pago de <b>${money(p.monto, l.moneda)}</b> del ${fISO(p.fecha)} (${esc(cname(l.clienteId))}). El saldo del préstamo volverá a subir.`, 'Eliminar pago', async () => { if (await remove('payments', t.dataset.id)){ closeSheet(); toast('Pago eliminado'); } }); break; }
+    case 'del-loan': { const id = t.dataset.loan; const n = D.loans[id].c.pays.length;
+      confirmSheet('Eliminar préstamo', `Se eliminará el préstamo ${esc(id)} y sus ${n} pagos registrados. No se puede deshacer.`, 'Eliminar préstamo', async () => {
+        for (const p of D.loans[id].c.pays) await remove('payments', p.id);
+        if (await remove('loans', id)){ closeSheet(); toast('Préstamo eliminado'); } }); break; }
+    case 'del-client': { const id = t.dataset.id;
+      const lids = (D.byClient[String(id)] || []);
+      const nPays = lids.reduce((a, l) => a + D.loans[l].c.pays.length, 0);
+      const nNotes = Object.values(S.notes).filter(n => String(n.clienteId) === String(id)).length;
+      const act = lids.filter(l => D.loans[l].c.estado === 'Activo');
+      const deuda = ['Bs', '$us'].map(cur => [cur, act.filter(l => D.loans[l].L.moneda === cur).reduce((a, l) => a + (D.loans[l].c.saldo || 0), 0)]).filter(x => x[1] > 0).map(x => money(x[1], x[0])).join(' y ');
+      const detalle = lids.length || nNotes ? `Se eliminará también: <b>${lids.length}</b> ${lids.length === 1 ? 'préstamo' : 'préstamos'}, <b>${nPays}</b> ${nPays === 1 ? 'pago' : 'pagos'} y <b>${nNotes}</b> ${nNotes === 1 ? 'nota' : 'notas'}.` : 'No tiene préstamos, pagos ni notas.';
+      const aviso = act.length ? `<div class="warnbox">Este cliente tiene ${act.length} ${act.length === 1 ? 'préstamo activo' : 'préstamos activos'} con saldo pendiente de ${deuda}.</div>` : '';
+      confirmSheet('Eliminar cliente', `¿Seguro que quiere eliminar a <b>${esc(cname(id))}</b>?<br>${detalle}${aviso}<br>Esta acción no se puede deshacer.`, 'Sí, eliminar cliente', async () => {
+        for (const l of lids){ for (const p of D.loans[l].c.pays) await remove('payments', p.id); await remove('loans', l); }
+        for (const [nid, n] of Object.entries(S.notes)) if (String(n.clienteId) === String(id)) await remove('notes', nid);
+        if (await remove('clients', id)){ closeSheet(); location.hash = '#clientes'; toast('Cliente eliminado'); } }); break; }
+    case 'export-xlsx': exportXlsx(); break;
+    case 'export-json': exportJson(); break;
+  }
+});
+document.addEventListener('input', e => {
+  const t = e.target;
+  if (t.dataset && t.dataset.act === 'search'){ UI.q = t.value; const l = $('#clist'); if (l) l.innerHTML = clientList(); return; }
+  if (t.dataset && t.dataset.act === 'hsearch'){ UI.hq = t.value; const v = $('#view'); const pos = t.selectionStart; v.innerHTML = vHistorial(); const n = $('.search', v); if (n){ n.focus(); n.setSelectionRange(pos, pos); } return; }
+  const form = t.closest && t.closest('form[data-form]'); if (!form) return;
+  if (form.dataset.form === 'loan'){
+    if (t.name === 'primerVenc') form.dataset.touched = '1';
+    if ((t.name === 'fecha' || t.name === 'frecuencia') && !form.dataset.touched) form.primerVenc.value = firstDueFrom(form.fecha.value, form.frecuencia.value);
+    updateLoanPreview(form);
+  }
+  if (form.dataset.form === 'pay'){
+    if (t.name === 'monto') form.dataset.autoamt = '';
+    if (t.name === 'loan' || t.name === 'concepto') form.dataset.autoamt = '1';
+    refreshPay(form);
+  }
+});
+document.addEventListener('change', e => {
+  const t = e.target; const form = t.closest && t.closest('form[data-form]'); if (!form) return;
+  if (form.dataset.form === 'loan'){ if ((t.name === 'fecha' || t.name === 'frecuencia') && !form.dataset.touched) form.primerVenc.value = firstDueFrom(form.fecha.value, form.frecuencia.value); updateLoanPreview(form); }
+  if (form.dataset.form === 'pay' && (t.name === 'loan' || t.name === 'concepto')){ form.dataset.autoamt = '1'; refreshPay(form); }
+});
+document.addEventListener('submit', async e => {
+  const form = e.target.closest('form[data-form]'); if (!form) return;
+  e.preventDefault();
+  const kind = form.dataset.form; const btn = form.querySelector('button:not([type=button])');
+  const lock = v => { if (btn) btn.disabled = v; };
+  if (kind === 'client'){
+    const f = new FormData(form); const nombre = String(f.get('nombre') || '').trim().replace(/\s+/g, ' ');
+    const id = form.dataset.id;
+    if (!nombre) return;
+    /* duplicate check relaxed */
+    const old = id ? S.clients[id] : {};
+    lock(true);
+    const nid = id || nextId('clients');
+    const ok = await put('clients', nid, Object.assign({}, old, {nombre, telefono:String(f.get('telefono') || '').trim(), direccion:String(f.get('direccion') || '').trim(), calificacion:String(f.get('calificacion') || ''), notasExcel:old.notasExcel || []}));
+    lock(false);
+    if (ok){ closeSheet(); toast(id ? 'Cliente actualizado' : 'Cliente agregado'); if (!id) location.hash = '#cliente-' + nid; }
+  }
+  if (kind === 'loan'){
+    const L = readLoan(form), id = form.dataset.id, cid = form.dataset.cid;
+    if (!(L.monto > 0)){ toast('Escriba el monto prestado.', true); return; }
+    if (!id && (L.tasa == null || !L.cuotas || !L.primerVenc)){ toast('Complete interés, cuotas y primer vencimiento.', true); return; }
+    const old = id ? S.loans[id] : {};
+    if (L.pagadoAntes === undefined) L.pagadoAntes = old.pagadoAntes || 0;
+    lock(true);
+    const nid = id || nextId('loans');
+    const ok = await put('loans', nid, Object.assign({}, old, L, {clienteId:String(cid)}));
+    lock(false);
+    if (ok){ closeSheet(); toast(id ? 'Préstamo actualizado' : 'Préstamo agregado'); }
+  }
+  if (kind === 'pay'){
+    const lid = form.loan.value, m = num(form.monto.value);
+    if (!lid || !(m > 0)){ toast('Escriba un monto mayor a 0.', true); return; }
+    lock(true);
+    const ok = await put('payments', nextId('payments'), {loanId:String(lid), fecha:form.fecha.value, monto:r2(m), concepto:form.concepto.value, creado:new Date().toISOString()});
+    lock(false);
+    if (ok){ closeSheet(); toast('Pago guardado'); }
+  }
+  if (kind === 'cfg'){
+    const n = Math.round(num(form.dias.value)); if (!(n >= 0)){ toast('Escriba un número de días.', true); return; }
+    try { await db.doc('config/ajustes').set({moraLeve:n}); toast('Ajuste guardado'); } catch (err){ toast('No se pudo guardar.', true); }
+  }
+});
+
+/* ================= archivos ================= */
+const BK_KEY = 'misPrestamos.ultimoRespaldo';
+function backupNote(){
+  let last = null; try { last = localStorage.getItem(BK_KEY); } catch (e) {}
+  const d = last ? Math.round((T - pISO(last)) / DAY) : null;
+  if (d !== null && d <= 14) return '';
+  return `<div class="warnbox">${d === null ? 'Todavía no descargó ninguna copia de seguridad.' : 'Hace ' + d + ' días que no descarga una copia de seguridad.'} <a href="#respaldo">Descargar copia</a></div>`;
+}
+function saveFile(filename, data){
+  const blob = data instanceof Blob ? data : new Blob([data], {type:'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+  try { localStorage.setItem(BK_KEY, iso(todayD())); } catch (e) {}
+  toast('Archivo descargado: ' + filename);
+}
+/* Escritor mínimo de .xlsx (sin librerías, funciona sin internet) */
+const CRCT = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++){ let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+const crc32 = b => { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = CRCT[(c ^ b[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+function zipStore(files){
+  const enc = new TextEncoder(), parts = [], cen = []; let off = 0;
+  const u16 = n => [n & 255, (n >> 8) & 255], u32 = n => [n & 255, (n >> 8) & 255, (n >> 16) & 255, (n >>> 24) & 255];
+  files.forEach(f => {
+    const nm = enc.encode(f.name), d = enc.encode(f.text), c = crc32(d);
+    const lh = new Uint8Array([0x50, 0x4b, 3, 4, ...u16(20), ...u16(0x0800), ...u16(0), ...u16(0), ...u16(0x21), ...u32(c), ...u32(d.length), ...u32(d.length), ...u16(nm.length), ...u16(0)]);
+    parts.push(lh, nm, d);
+    cen.push(new Uint8Array([0x50, 0x4b, 1, 2, ...u16(20), ...u16(20), ...u16(0x0800), ...u16(0), ...u16(0), ...u16(0x21), ...u32(c), ...u32(d.length), ...u32(d.length), ...u16(nm.length), ...u16(0), ...u16(0), ...u16(0), ...u16(0), ...u32(0), ...u32(off)]), nm);
+    off += lh.length + nm.length + d.length;
+  });
+  const cdSize = cen.reduce((a, p) => a + p.length, 0);
+  const end = new Uint8Array([0x50, 0x4b, 5, 6, ...u16(0), ...u16(0), ...u16(files.length), ...u16(files.length), ...u32(cdSize), ...u32(off), ...u16(0)]);
+  return new Blob([...parts, ...cen, end], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+}
+const xe = v => String(v).replace(/[&<>"]/g, c => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;'}[c])).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '');
+const colName = i => { let s = ''; i++; while (i > 0){ const m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); } return s; };
+function sheetXml(rows){
+  const heads = [...new Set(rows.flatMap(r => Object.keys(r)))];
+  const cell = (r, c, v, st) => (typeof v === 'number' && isFinite(v)) ? `<c r="${colName(c)}${r}"><v>${v}</v></c>` : `<c r="${colName(c)}${r}" t="inlineStr"${st ? ' s="1"' : ''}><is><t xml:space="preserve">${xe(v)}</t></is></c>`;
+  let x = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>';
+  x += '<row r="1">' + heads.map((h, c) => cell(1, c, h, true)).join('') + '</row>';
+  rows.forEach((row, i) => { x += `<row r="${i + 2}">` + heads.map((h, c) => (row[h] === undefined || row[h] === null || row[h] === '') ? '' : cell(i + 2, c, row[h])).join('') + '</row>'; });
+  return x + '</sheetData></worksheet>';
+}
+function makeXlsx(sheets){
+  const H = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
+  const files = [
+    {name:'[Content_Types].xml', text:H + '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>' + sheets.map((_, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('') + '</Types>'},
+    {name:'_rels/.rels', text:H + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'},
+    {name:'xl/workbook.xml', text:H + '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>' + sheets.map(([n], i) => `<sheet name="${xe(n)}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join('') + '</sheets></workbook>'},
+    {name:'xl/_rels/workbook.xml.rels', text:H + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' + sheets.map((_, i) => `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`).join('') + `<Relationship Id="rId${sheets.length + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`},
+    {name:'xl/styles.xml', text:H + '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>'}
+  ];
+  sheets.forEach(([, rows], i) => files.push({name:`xl/worksheets/sheet${i + 1}.xml`, text:sheetXml(rows.length ? rows : [{'(vacío)':''}])}));
+  return zipStore(files);
+}
+function exportXlsx(){
+  const cl = Object.entries(S.clients).sort((a, b) => +a[0] - +b[0]).map(([id, c]) => ({ID:+id, Nombre:c.nombre, Teléfono:c.telefono, Ubicación:c.direccion, Calificación:c.calificacion, 'Notas del Excel':(c.notasExcel || []).join(' | ')}));
+  const ln = Object.values(D.loans).sort((a, b) => +a.id - +b.id).map(({id, L, c}) => ({ID:+id, Cliente:cname(L.clienteId), Fecha:L.fecha, Moneda:L.moneda, Monto:L.monto, 'Tasa mensual':L.tasa, Tipo:L.tipo, Frecuencia:L.frecuencia, Cuotas:L.cuotas, 'Primer vencimiento':L.primerVenc,
+    'Total a devolver':c.total, 'Meses de interés extra':c.extras, Pagado:c.paid, Saldo:c.saldo, Estado:c.estado, Situación:c.sit, 'Cuotas vencidas':c.vencidas, 'Monto vencido':c.vencido, 'Próx. vencimiento':c.prox ? iso(c.prox) : '', Garantía:L.garantia, Inversionista:L.inversionista, Nota:L.nota}));
+  const pg = Object.entries(S.payments).sort((a, b) => +a[0] - +b[0]).map(([id, p]) => ({ID:+id, Fecha:p.fecha, Préstamo:+p.loanId, Cliente:cname((S.loans[String(p.loanId)] || {}).clienteId), Monto:p.monto, Concepto:p.concepto}));
+  const nt = Object.entries(S.notes).sort((a, b) => (a[1].fecha || '').localeCompare(b[1].fecha || '')).map(([id, n]) => ({Cliente:cname(n.clienteId), Fecha:n.fecha, Nota:n.texto}));
+  const hs = S.archive.map(a => ({Cliente:a.nombre, Teléfono:a.telefono, Inicio:a.inicio, Final:a.fin, Monto:a.monto, Moneda:a.moneda, 'Tasa mensual':a.tasa, Plazo:a.plazo, Estado:a.estado, Detalle:a.detalle}));
+  saveFile('Prestamos_' + iso(T) + '.xlsx', makeXlsx([['Clientes', cl], ['Préstamos', ln], ['Pagos', pg], ['Notas', nt], ['Historial', hs]]));
+}
+function exportJson(){
+  saveFile('Prestamos_copia_' + iso(T) + '.json', JSON.stringify({clients:S.clients, loans:S.loans, payments:S.payments, notes:S.notes, archive:S.archive, cfg:S.cfg}, null, 1));
+}
+document.addEventListener('click', e => { const t = e.target.closest('[data-act=pick-restore]'); if (t) $('#restore-file').click(); });
+document.addEventListener('change', e => {
+  if (!e.target || e.target.id !== 'restore-file') return;
+  const f = e.target.files && e.target.files[0]; if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    let b; try { b = JSON.parse(rd.result); if (!b || typeof b !== 'object' || !b.clients || !b.loans) throw 0; } catch (x) { toast('El archivo no es una copia válida de esta aplicación.', true); return; }
+    const n = o => Object.keys(o || {}).length;
+    confirmSheet('Restaurar copia', `Se reemplazarán <b>todos</b> los datos de este navegador por la copia: <b>${n(b.clients)}</b> clientes, <b>${n(b.loans)}</b> préstamos, <b>${n(b.payments)}</b> pagos y <b>${n(b.notes)}</b> notas. Lo actual se perderá.`, 'Sí, restaurar', async () => {
+      try { LocalDB.replaceAll(b); closeSheet(); toast('Copia restaurada'); } catch (err) { toast(err.message, true); } });
+  };
+  rd.readAsText(f); e.target.value = '';
+});
+
+/* ================= base de datos local (este navegador) ================= */
+const SEED = {"clients": {"1": {"calificacion": "", "direccion": "", "nombre": "Juan Carlos Ayllon Balcázar", "notasExcel": ["Sandra dio 5,000 Bs y yo di 5,000 Bs"], "telefono": ""}, "10": {"calificacion": "", "direccion": "17°44'06.4\"S 63°03'42.1\"W", "nombre": "Manuel Fernando Coca Serrano", "notasExcel": ["Sandra presto 55,000 Bs le prometi 30,000 Bs de comision Fernando pago abogado y notaria"], "telefono": ""}, "11": {"calificacion": "", "direccion": "https://maps.app.goo.gl/SLftfv7NfauRPFiC8", "nombre": "Rodrigo Quispe Mamani", "notasExcel": ["Paga el 7/11 Pague Qr Pendiente no se pago", "pago intereses el 15/10/26"], "telefono": "75062821"}, "12": {"calificacion": "", "direccion": "", "nombre": "Martha Helen Guzman Arismendi", "notasExcel": [], "telefono": ""}, "13": {"calificacion": "Riesgoso", "direccion": "", "nombre": "Lic. Andres Hurtado", "notasExcel": ["En tu archivo, en la columna Garantía figuraba: ESTAFADOR"], "telefono": ""}, "14": {"calificacion": "", "direccion": "", "nombre": "Jose Edy Adrian Gutierrez", "notasExcel": ["Dijo en 2 semanas paga 3,000 Bs Cancelo 22,000 Bs el 12/09"], "telefono": "62678760"}, "15": {"calificacion": "", "direccion": "", "nombre": "Raquel Burgos Cuellar", "notasExcel": [], "telefono": ""}, "17": {"calificacion": "", "direccion": "", "nombre": "Santiago Chile", "notasExcel": ["Di 1700 Bs"], "telefono": ""}, "18": {"calificacion": "", "direccion": "", "nombre": "Mario Fernando Mendez Pardo", "notasExcel": ["Se agrego pago abogado y notario Pagara en Noviembre", "Di 4110 $us y 32,522 Bs efectivo"], "telefono": "69538775"}, "19": {"calificacion": "", "direccion": "https://maps.app.goo.gl/HVfwtXDpuTAM9K19A", "nombre": "Sirley Cuellar", "notasExcel": ["Yo pague abogado 120 Bs Notario 350 Bs Copias 20 Bs preste 12,000 Bs Pago 3 meses juntos el 19/10"], "telefono": "76392404"}, "2": {"calificacion": "", "direccion": "https://maps.app.goo.gl/rJ3tn8p4EDC1MGzy8", "nombre": "Ing Oscar Antonio Palacio", "notasExcel": ["No pago mes 10 pidio un prestamo de 4 mil / Di 20.000 Bs", "Qr 4,000 Bs"], "telefono": "73541750"}, "20": {"calificacion": "", "direccion": "", "nombre": "Maria Luisa Romay de Eastman", "notasExcel": ["Di 5,000 Bs Qr Pagara 1578 Bs cada mes x 4 meses"], "telefono": ""}, "21": {"calificacion": "", "direccion": "", "nombre": "Marcelo Heredia Vaca", "notasExcel": ["Di 30,000 Bs el pago abogado y notario", "Dio Sandra al 5% 10,000 Bs el pago abogado"], "telefono": ""}, "22": {"calificacion": "", "direccion": "", "nombre": "Chiquilina Ayllon Balcázar", "notasExcel": ["Paga el 22/11"], "telefono": ""}, "23": {"calificacion": "", "direccion": "", "nombre": "Dra Maria Eugenia Cotoca", "notasExcel": [], "telefono": ""}, "24": {"calificacion": "", "direccion": "", "nombre": "Roxana Roman Medeiros", "notasExcel": [], "telefono": "79039884"}, "25": {"calificacion": "", "direccion": "", "nombre": "Luis Claudio Zabala Serrano", "notasExcel": ["Jeuves 5/11 deja la moto se pago 100 Bs Abogado y 350 Bs notaria"], "telefono": "62214590"}, "26": {"calificacion": "Riesgoso", "direccion": "https://maps.app.goo.gl/GzvZrAUbrWcGf4bWA", "nombre": "Haslye Alejandra Aparicio Ayala", "notasExcel": ["Pagara en Septiembre todo se pago 100 Bs Abogado y 350 Bs notaria"], "telefono": "70003530"}, "27": {"calificacion": "", "direccion": "", "nombre": "Nohemi Moron", "notasExcel": [], "telefono": ""}, "29": {"calificacion": "", "direccion": "", "nombre": "David Helton Alfaro Duran", "notasExcel": [], "telefono": ""}, "3": {"calificacion": "", "direccion": "", "nombre": "Gustavo Eduardo Mayorga", "notasExcel": ["El 17/11 pagara 4.000 Bs amortizando capital /Di 6500", "Pague Qr"], "telefono": ""}, "31": {"calificacion": "", "direccion": "", "nombre": "Guery Jorge Vaca Onishi", "notasExcel": [], "telefono": "61504070"}, "32": {"calificacion": "", "direccion": "", "nombre": "Ricardo Vaca Onishi", "notasExcel": [], "telefono": "76366942"}, "33": {"calificacion": "", "direccion": "", "nombre": "Robert Camargo", "notasExcel": [], "telefono": ""}, "34": {"calificacion": "Riesgoso", "direccion": "https://maps.app.goo.gl/tbt7qKAJPuT4iRZb9", "nombre": "Karen Gloria Herrera Gonzales", "notasExcel": [], "telefono": ""}, "4": {"calificacion": "", "direccion": "https://maps.app.goo.gl/UzUkzimmnEoyiPgE6", "nombre": "Sixta Gamboa Mario Galarza", "notasExcel": ["el 6/10 pago de dos meses Hijo denis 69437343 Di 900 $us ellos pagaron todo NOTA Dice que en Octubre pagara todo"], "telefono": "73667663"}, "5": {"calificacion": "", "direccion": "", "nombre": "Sandra Lavadenz", "notasExcel": ["A cuenta de los 5 mil de la camioneta"], "telefono": ""}, "6": {"calificacion": "", "direccion": "https://maps.app.goo.gl/zx47sRg91ymB84ZA8", "nombre": "Ronald Josue Egues Rivero", "notasExcel": ["Di 1500", "Di efectivo", "Preste 5.000 Bs desconté 450 Bs de interés del 30/09/26", "Pago 10 / Di 3.000 Bs"], "telefono": "61369517"}, "7": {"calificacion": "Riesgoso", "direccion": "", "nombre": "Dr Mario Mercado", "notasExcel": [], "telefono": "76057398"}, "8": {"calificacion": "", "direccion": "", "nombre": "Arq. Fernando Mercado Perez", "notasExcel": ["Di 400 $us desde el 20 de agost pasamos a mensual", "Di 800 $us paga en un mes"], "telefono": "77044238"}, "9": {"calificacion": "", "direccion": "", "nombre": "Oscar Balcazar", "notasExcel": [], "telefono": ""}}, "loans": {"1": {"clienteId": "1", "cuotas": 3, "fecha": "2026-11-01", "finalOriginal": "2026-12-21", "frecuencia": "Mensual", "garantia": "Personal", "inversionista": "", "moneda": "$us", "monto": 800, "nota": "", "pagadoAntes": 0, "primerVenc": "2026-12-01", "tasa": 0.1, "tipo": "Simple"}, "10": {"clienteId": "8", "cuotas": 1, "fecha": "2026-10-08", "finalOriginal": "2026-11-08", "frecuencia": "Mensual", "garantia": "", "inversionista": "", "moneda": "$us", "monto": 1000, "nota": "", "pagadoAntes": 0, "primerVenc": "2026-11-08", "tasa": 0.1, "tipo": "Simple"}, "11": {"clienteId": "9", "cuotas": null, "fecha": "2025-08-09", "finalOriginal": null, "frecuencia": "Mensual", "garantia": "Personal", "inversionista": "", "moneda": "Bs", "monto": 4886, "nota": "", "pagadoAntes": 0, "primerVenc": null, "tasa": null, "tipo": "Simple"}, "12": {"clienteId": "10", "cuotas": 2, "fecha": "2026-05-09", "finalOriginal": "2026-07-07", "frecuencia": "Mensual", "garantia": "Personal", "inversionista": "Propio", "moneda": "Bs", "monto": 304000, "nota": "Sandra presto 55,000 Bs le prometi 30,000 Bs de comision Fernando pago abogado y notaria", "pagadoAntes": 121600, "primerVenc": "2026-06-09", "tasa": 0.1, "tipo": "Simple"}, "13": {"clienteId": "11", "cuotas": 1, "fecha": "2026-10-07", "finalOriginal": "2026-10-29", "frecuencia": "Mensual", "garantia": "", "inversionista": "", "moneda": "Bs", "monto": 3000, "nota": "Paga el 7/11 Pague Qr Pendiente no se pago", "pagadoAntes": 0, "primerVenc": "2026-10-29", "tasa": 0.1, "tipo": "Simple"}, "14": {"clienteId": "12", "cuotas": 6, "fecha": "2026-04-11", "finalOriginal": "2026-10-05", "frecuencia": "Mensual", "garantia": "Sandra", "inversionista": "Propio", "moneda": "Bs", "monto": 3000, "nota": "", "pagadoAntes": 0, "primerVenc": "2026-05-11", "tasa": 0.1, "tipo": "Simple"}, "15": {"clienteId": "13", "cuotas": 2, "fecha": "2026-08-11", "finalOriginal": "2026-10-11", "frecuencia": "Mensual", "garantia": "ESTAFADOR", "inversionista": "", "moneda": "Bs", "monto": 1400, "nota": "", "pagadoAntes": 0, "primerVenc": "2026-09-11", "tasa": 0.1, "tipo": "Simple"}, "16": {"clienteId": "14", "cuotas": 6, "fecha": "2026-11-12", "finalOriginal": "2026-10-29", "frecuencia": "Mensual", "garantia": "Auto Nissan", "inversionista": "Propio", "moneda": "Bs", "monto": 7770, "nota": "Dijo en 2 semanas paga 3,000 Bs Cancelo 22,000 Bs el 12/09", "pagadoAntes": 0, "primerVenc": "2026-12-12", "tasa": 0.1, "tipo": "Simple"}, "17": {"clienteId": "3", "cuotas": 1, "fecha": "2026-10-13", "finalOriginal": "2026-10-20", "frecuencia": "Mensual", "garantia": "Auto toyota", "inversionista": "", "moneda": "Bs", "monto": 1200, "nota": "Pague Qr", "pagadoAntes": 0, "primerVenc": "2026-10-20", "tasa": 0.1, "tipo": "Simple"}, "18": {"clienteId": "6", "cuotas": 2, "fecha": "2026-10-14", "finalOriginal": "2026-12-14", "frecuencia": "Mensual", "garantia": "Moto Honda", "inversionista": "", "moneda": "Bs", "monto": 3000, "nota": "Di efectivo", "pagadoAntes": 0, "primerVenc": "2026-11-14", "tasa": 0.15, "tipo": "Simple"}, "19": {"clienteId": "11", "cuotas": 2, "fecha": "2026-10-15", "finalOriginal": "2026-10-29", "frecuencia": "Mensual", "garantia": "Terreno", "inversionista": "", "moneda": "$us", "monto": 1000, "nota": "pago intereses el 15/10/26", "pagadoAntes": 0, "primerVenc": "2026-11-15", "tasa": 0.1, "tipo": "Simple"}, "2": {"clienteId": "2", "cuotas": 3, "fecha": "2026-10-01", "finalOriginal": "2027-01-01", "frecuencia": "Mensual", "garantia": "Runner", "inversionista": "", "moneda": "Bs", "monto": 20000, "nota": "No pago mes 10 pidio un prestamo de 4 mil / Di 20.000 Bs", "pagadoAntes": 2000, "primerVenc": "2026-11-01", "tasa": 0.1, "tipo": "Simple"}, "22": {"clienteId": "17", "cuotas": 1, "fecha": "2026-10-16", "finalOriginal": "2026-11-16", "frecuencia": "Mensual", "garantia": "Moto TVS", "inversionista": "", "moneda": "Bs", "monto": 1700, "nota": "Di 1700 Bs", "pagadoAntes": 0, "primerVenc": "2026-11-16", "tasa": 0.1471, "tipo": "Simple"}, "23": {"clienteId": "18", "cuotas": 6, "fecha": "2026-09-17", "finalOriginal": "2027-03-17", "frecuencia": "Mensual", "garantia": "Casa", "inversionista": "", "moneda": "$us", "monto": 4110, "nota": "Se agrego pago abogado y notario Pagara en Noviembre", "pagadoAntes": 411, "primerVenc": "2026-10-17", "tasa": 0.1, "tipo": "Simple"}, "24": {"clienteId": "18", "cuotas": 6, "fecha": "2026-09-17", "finalOriginal": "2027-03-17", "frecuencia": "Mensual", "garantia": "Casa", "inversionista": "Leo", "moneda": "$us", "monto": 32522, "nota": "Di 4110 $us y 32,522 Bs efectivo", "pagadoAntes": 3252.2, "primerVenc": "2026-10-17", "tasa": 0.1, "tipo": "Simple"}, "25": {"clienteId": "19", "cuotas": 3, "fecha": "2026-07-20", "finalOriginal": "2026-10-20", "frecuencia": "Mensual", "garantia": "Casa", "inversionista": "Leo", "moneda": "Bs", "monto": 12000, "nota": "Yo pague abogado 120 Bs Notario 350 Bs Copias 20 Bs preste 12,000 Bs Pago 3 meses juntos el 19/10", "pagadoAntes": 0, "primerVenc": "2026-08-20", "tasa": 0.1, "tipo": "Simple"}, "26": {"clienteId": "5", "cuotas": null, "fecha": "2026-10-20", "finalOriginal": null, "frecuencia": "Mensual", "garantia": "", "inversionista": "", "moneda": "Bs", "monto": 1250, "nota": "A cuenta de los 5 mil de la camioneta", "pagadoAntes": 0, "primerVenc": null, "tasa": null, "tipo": "Simple"}, "27": {"clienteId": "8", "cuotas": 1, "fecha": "2026-08-20", "finalOriginal": "2026-08-11", "frecuencia": "Mensual", "garantia": "Personal", "inversionista": "Leo", "moneda": "$us", "monto": 400, "nota": "Di 400 $us desde el 20 de agost pasamos a mensual", "pagadoAntes": 120, "primerVenc": "2026-09-04", "tasa": 0.1, "tipo": "Simple"}, "28": {"clienteId": "20", "cuotas": 4, "fecha": "2026-10-20", "finalOriginal": "2027-02-20", "frecuencia": "Mensual", "garantia": "Tereno Fatima", "inversionista": "", "moneda": "Bs", "monto": 5000, "nota": "Di 5,000 Bs Qr Pagara 1578 Bs cada mes x 4 meses", "pagadoAntes": 0, "primerVenc": "2026-11-20", "tasa": 0.1, "tipo": "Simple"}, "29": {"clienteId": "1", "cuotas": 3, "fecha": "2026-09-21", "finalOriginal": "2026-12-21", "frecuencia": "Mensual", "garantia": "Personal", "inversionista": "", "moneda": "Bs", "monto": 10000, "nota": "Sandra dio 5,000 Bs y yo di 5,000 Bs", "pagadoAntes": 1000, "primerVenc": "2026-10-21", "tasa": 0.1, "tipo": "Simple"}, "3": {"clienteId": "2", "cuotas": 3, "fecha": "2026-11-02", "finalOriginal": "2027-01-01", "frecuencia": "Mensual", "garantia": "Runner", "inversionista": "", "moneda": "Bs", "monto": 4000, "nota": "Qr 4,000 Bs", "pagadoAntes": 0, "primerVenc": "2026-12-02", "tasa": 0.1, "tipo": "Simple"}, "30": {"clienteId": "21", "cuotas": 6, "fecha": "2026-05-21", "finalOriginal": "2026-10-26", "frecuencia": "Mensual", "garantia": "Dodge Dakota", "inversionista": "Leo", "moneda": "Bs", "monto": 30000, "nota": "Di 30,000 Bs el pago abogado y notario", "pagadoAntes": 0, "primerVenc": "2026-06-21", "tasa": 0.1, "tipo": "Simple"}, "31": {"clienteId": "22", "cuotas": 1, "fecha": "2026-10-22", "finalOriginal": "2026-11-22", "frecuencia": "Mensual", "garantia": "", "inversionista": "", "moneda": "Bs", "monto": 500, "nota": "Paga el 22/11", "pagadoAntes": 0, "primerVenc": "2026-11-22", "tasa": 0.1, "tipo": "Simple"}, "32": {"clienteId": "23", "cuotas": 1, "fecha": "2026-09-23", "finalOriginal": "2026-09-29", "frecuencia": "Mensual", "garantia": "Personal", "inversionista": "", "moneda": "Bs", "monto": 200, "nota": "", "pagadoAntes": 40, "primerVenc": "2026-09-28", "tasa": 0.1, "tipo": "Simple"}, "33": {"clienteId": "8", "cuotas": 1, "fecha": "2026-09-23", "finalOriginal": "2026-10-23", "frecuencia": "Mensual", "garantia": "Papeles Vagoneta", "inversionista": "", "moneda": "$us", "monto": 800, "nota": "Di 800 $us paga en un mes", "pagadoAntes": 80, "primerVenc": "2026-10-23", "tasa": 0.1, "tipo": "Simple"}, "34": {"clienteId": "24", "cuotas": 1, "fecha": "2026-10-27", "finalOriginal": "2026-11-15", "frecuencia": "Mensual", "garantia": "Sandra", "inversionista": "", "moneda": "Bs", "monto": 1000, "nota": "", "pagadoAntes": 0, "primerVenc": "2026-11-11", "tasa": 0.1, "tipo": "Simple"}, "35": {"clienteId": "25", "cuotas": 6, "fecha": "2026-04-27", "finalOriginal": "2026-09-11", "frecuencia": "Mensual", "garantia": "Personal", "inversionista": "Leo", "moneda": "Bs", "monto": 10000, "nota": "Jeuves 5/11 deja la moto se pago 100 Bs Abogado y 350 Bs notaria", "pagadoAntes": 1850, "primerVenc": "2026-05-27", "tasa": 0.1, "tipo": "Simple"}, "36": {"clienteId": "21", "cuotas": 6, "fecha": "2026-05-27", "finalOriginal": "2026-10-20", "frecuencia": "Mensual", "garantia": "Dodge Dakota", "inversionista": "Sandra", "moneda": "Bs", "monto": 10000, "nota": "Dio Sandra al 5% 10,000 Bs el pago abogado", "pagadoAntes": 500, "primerVenc": "2026-06-27", "tasa": 0.1, "tipo": "Simple"}, "37": {"clienteId": "26", "cuotas": 6, "fecha": "2026-04-27", "finalOriginal": "2026-10-27", "frecuencia": "Mensual", "garantia": "Personal", "inversionista": "Leo", "moneda": "Bs", "monto": 20000, "nota": "Pagara en Septiembre todo se pago 100 Bs Abogado y 350 Bs notaria", "pagadoAntes": 0, "primerVenc": "2026-05-27", "tasa": 0.1, "tipo": "Simple"}, "38": {"clienteId": "6", "cuotas": 3, "fecha": "2026-10-29", "finalOriginal": "2026-11-29", "frecuencia": "Mensual", "garantia": "", "inversionista": "", "moneda": "Bs", "monto": 5000, "nota": "Preste 5.000 Bs desconté 450 Bs de interés del 30/09/26", "pagadoAntes": 0, "primerVenc": "2026-11-29", "tasa": 0.15, "tipo": "Simple"}, "39": {"clienteId": "6", "cuotas": 3, "fecha": "2026-09-30", "finalOriginal": "2026-12-30", "frecuencia": "Mensual", "garantia": "Moto Honda", "inversionista": "", "moneda": "Bs", "monto": 3000, "nota": "Pago 10 / Di 3.000 Bs", "pagadoAntes": 450, "primerVenc": "2026-10-30", "tasa": 0.15, "tipo": "Simple"}, "4": {"clienteId": "3", "cuotas": 3, "fecha": "2026-10-02", "finalOriginal": "2026-12-02", "frecuencia": "Mensual", "garantia": "Auto toyota", "inversionista": "Sandra", "moneda": "Bs", "monto": 6500, "nota": "El 17/11 pagara 4.000 Bs amortizando capital /Di 6500", "pagadoAntes": 975, "primerVenc": "2026-11-02", "tasa": 0.15, "tipo": "Simple"}, "40": {"clienteId": "27", "cuotas": null, "fecha": "2026-01-09", "finalOriginal": null, "frecuencia": "Mensual", "garantia": "", "inversionista": "", "moneda": "Bs", "monto": 250, "nota": "", "pagadoAntes": 0, "primerVenc": null, "tasa": null, "tipo": "Simple"}, "44": {"clienteId": "31", "cuotas": 6, "fecha": "2023-12-27", "finalOriginal": "2024-06-27", "frecuencia": "Mensual", "garantia": "Garantia Hipotecaria", "inversionista": "", "moneda": "$us", "monto": 1000, "nota": "", "pagadoAntes": 0, "primerVenc": "2024-01-27", "tasa": 0.1, "tipo": "Simple"}, "45": {"clienteId": "32", "cuotas": 6, "fecha": "2023-12-26", "finalOriginal": "2024-06-23", "frecuencia": "Mensual", "garantia": "Garantia Hipotecaria", "inversionista": "", "moneda": "$us", "monto": 2500, "nota": "", "pagadoAntes": 0, "primerVenc": "2024-01-26", "tasa": 0.1, "tipo": "Simple"}, "46": {"clienteId": "32", "cuotas": 6, "fecha": "2023-12-12", "finalOriginal": "2024-06-27", "frecuencia": "Mensual", "garantia": "Garantia Hipotecaria", "inversionista": "", "moneda": "$us", "monto": 4000, "nota": "", "pagadoAntes": 0, "primerVenc": "2024-01-12", "tasa": 0.1, "tipo": "Simple"}, "47": {"clienteId": "33", "cuotas": 6, "extender": true, "fecha": "2025-01-26", "finalOriginal": null, "frecuencia": "Mensual", "garantia": "Nada", "inversionista": "Propio", "moneda": "$us", "monto": 10000, "nota": "Matarlo", "pagadoAntes": 0, "primerVenc": "2026-11-26", "tasa": 0.1, "tipo": "Simple"}, "48": {"clienteId": "34", "cuotas": 10, "extender": true, "fecha": "2025-01-26", "finalOriginal": null, "frecuencia": "Mensual", "garantia": "Adrian", "inversionista": "Propio", "moneda": "$us", "monto": 55000, "nota": "Tiene mi moto", "pagadoAntes": 0, "primerVenc": "2025-12-26", "tasa": 0.01, "tipo": "Simple"}, "49": {"clienteId": "32", "cuotas": 6, "extender": true, "fecha": "2025-06-06", "frecuencia": "Mensual", "garantia": "Garantia Hipotecaria", "inversionista": "Propio", "moneda": "Bs", "monto": 52500, "nota": "Fue el dinero que le día por el lote", "pagadoAntes": 0, "primerVenc": "2025-07-06", "tasa": 0.1, "tipo": "Simple"}, "5": {"clienteId": "4", "cuotas": 3, "fecha": "2026-08-03", "finalOriginal": "2026-10-03", "frecuencia": "Mensual", "garantia": "Casa", "inversionista": "", "moneda": "$us", "monto": 900, "nota": "el 6/10 pago de dos meses Hijo denis 69437343 Di 900 $us ellos pagaron todo NOTA Dice que en Octubre pagara todo", "pagadoAntes": 270, "primerVenc": "2026-09-03", "tasa": 0.1, "tipo": "Simple"}, "50": {"clienteId": "7", "cuotas": 6, "extender": true, "fecha": "2026-11-06", "frecuencia": "Mensual", "garantia": "Garantia Hipotecaria", "inversionista": "Propio", "moneda": "Bs", "monto": 200, "nota": "Llamar", "pagadoAntes": 0, "primerVenc": "2026-12-06", "tasa": 0.01, "tipo": "Simple"}, "51": {"clienteId": "29", "cuotas": 6, "extender": true, "fecha": "2026-11-06", "frecuencia": "Mensual", "garantia": "Garantia Hipotecaria", "inversionista": "Propio", "moneda": "Bs", "monto": 20000, "nota": "Tiene mi moto", "pagadoAntes": 0, "primerVenc": "2026-12-06", "tasa": 0.01, "tipo": "Simple"}, "52": {"clienteId": "26", "cuotas": 6, "extender": true, "fecha": "2026-10-13", "frecuencia": "Mensual", "garantia": "Hipotecaria", "inversionista": "Propio", "moneda": "Bs", "monto": 3500, "nota": "Pagara 07/11/26 Di para demostrar capita en su cuenta del banco", "pagadoAntes": 0, "primerVenc": "2026-11-13", "tasa": 0.1, "tipo": "Simple"}, "53": {"clienteId": "26", "cuotas": 6, "extender": true, "fecha": "2026-04-16", "frecuencia": "Mensual", "garantia": "Hipotecaria", "inversionista": "Propio", "moneda": "Bs", "monto": 35000, "nota": "Pagara 07/11/26", "pagadoAntes": 0, "primerVenc": "2026-07-16", "tasa": 0.1, "tipo": "Simple"}, "54": {"clienteId": "15", "cuotas": 1, "extender": true, "fecha": "2026-10-16", "frecuencia": "Mensual", "garantia": "Personal", "inversionista": "Propio", "moneda": "Bs", "monto": 1000, "nota": "Llamar", "pagadoAntes": 0, "primerVenc": "2026-11-16", "tasa": 0.15, "tipo": "Simple"}, "6": {"clienteId": "5", "cuotas": 2, "fecha": "2026-11-04", "finalOriginal": "2026-12-04", "frecuencia": "Mensual", "garantia": "", "inversionista": "Propio", "moneda": "Bs", "monto": 4000, "nota": "", "pagadoAntes": 0, "primerVenc": "2026-12-04", "tasa": 0.1, "tipo": "Simple"}, "7": {"clienteId": "6", "cuotas": 3, "fecha": "2026-10-05", "finalOriginal": "2026-12-30", "frecuencia": "Mensual", "garantia": "Portatil", "inversionista": "", "moneda": "Bs", "monto": 1500, "nota": "Di 1500", "pagadoAntes": 225, "primerVenc": "2026-11-05", "tasa": 0.15, "tipo": "Simple"}, "8": {"clienteId": "3", "cuotas": 1, "fecha": "2026-10-05", "finalOriginal": "2026-10-20", "frecuencia": "Mensual", "garantia": "Auto toyota", "inversionista": "", "moneda": "Bs", "monto": 700, "nota": "", "pagadoAntes": 0, "primerVenc": "2026-10-20", "tasa": 0.15, "tipo": "Simple"}, "9": {"clienteId": "7", "cuotas": 2, "extender": true, "fecha": "2024-07-08", "finalOriginal": null, "frecuencia": "Mensual", "garantia": "Personal", "inversionista": "", "moneda": "Bs", "monto": 2000, "nota": "", "pagadoAntes": 5400, "primerVenc": "2024-08-08", "tasa": 0, "tipo": "Simple"}}, "payments": {"1": {"concepto": "Cancelación total", "creado": "2026-11-07T01:21:44.701Z", "fecha": "2026-11-05", "loanId": "28", "monto": 5300}, "2": {"concepto": "Cancelación total", "creado": "2026-11-07T01:22:54.357Z", "fecha": "2026-11-06", "loanId": "28", "monto": 1700}}, "notes": {"1": {"clienteId": "34", "creado": "2026-11-07T00:59:35.765Z", "fecha": "2026-11-06", "texto": "El sábado 7/11/26 pedirá la llave"}, "2": {"clienteId": "12", "creado": "2026-11-07T01:20:07.204Z", "fecha": "2026-11-06", "texto": "Pidió hasta el Lunes 09/11/26 pagar todo"}, "3": {"clienteId": "32", "creado": "2026-11-07T01:40:43.764Z", "fecha": "2026-11-06", "texto": "Cobrar"}, "4": {"clienteId": "7", "creado": "2026-11-07T01:46:46.892Z", "fecha": "2026-11-06", "texto": "Llamar"}, "5": {"clienteId": "26", "creado": "2026-11-07T01:48:47.740Z", "fecha": "2026-11-06", "texto": "Pagará Sabado 7/11/26"}, "6": {"clienteId": "15", "creado": "2026-11-07T02:14:54.484Z", "fecha": "2026-11-06", "texto": "Llamar"}}, "archive": {"items": [{"cierre": null, "detalle": "Firma · 17°44'06.4\"S 63°03'42.1\"W · Celular 69257104 de la mujer yesely Chavez Zelada · Por el Centro de Salud Don Chichi Distrito 5 Cotoca", "estado": "Pendiente", "fin": "2025-08-25", "inicio": "2025-08-20", "moneda": "Bs", "monto": 5000, "nombre": "Manuel Fernando Coca Serrano", "plazo": "1 Meses", "tasa": 0.2, "telefono": "75541802"}, {"cierre": null, "detalle": "Garantía Hipotecaria · Me transfirio el terreno", "estado": "Pendiente", "fin": "2025-08-26", "inicio": "2024-08-26", "moneda": "Bs", "monto": 43730, "nombre": "Dr Claudio Limberg Adorno Esteves", "plazo": "8 Meses", "tasa": 0.08, "telefono": "78417054"}, {"cierre": null, "detalle": "Mediana Propiedad · 17°44'06.4\"S 63°03'42.1\"W · 2do pago 120925 atrasado · 1017 Se sumo y se dios mas 6.000 Bs con el compromiso de pagar 20.000 Bs", "estado": "Pendiente", "fin": "2025-09-29", "inicio": "2025-08-29", "moneda": "Bs", "monto": 20000, "nombre": "Manuel Fernando Coca Serrano", "plazo": "1 Meses", "tasa": 0.2, "telefono": "75541802"}, {"cierre": null, "detalle": "Mediana Propiedad · 17°44'06.4\"S 63°03'42.1\"W · Se presto 20.000 Bs se anotó los 6 meses de interés 12.000 Bs más 2.500 Bs de gastos Sandra solo dio 7.500 Bs + 200Bs de gastos trámites debe 1.200Bs", "estado": "Pendiente", "fin": "2026-02-11", "inicio": "2025-08-12", "moneda": "Bs", "monto": 34500, "nombre": "Manuel Fernando Coca Serrano", "plazo": "6 Meses", "tasa": 0.15, "telefono": "75541802"}, {"cierre": null, "detalle": "Moto Galval · https://maps.app.goo.gl/4LroCRRWK1q2aTcR8 · Placa 6916BDY Preste 5.000 Bs de Noelia pagar 7.5", "estado": "", "fin": "2026-03-10", "inicio": "2026-01-28", "moneda": "Bs", "monto": 5000, "nombre": "Adriana Rojas Cespedes", "plazo": "2 Meses", "tasa": 0.2, "telefono": "75293884"}, {"cierre": null, "detalle": "", "estado": "", "fin": null, "inicio": "2026-04-20", "moneda": "", "monto": 300, "nombre": "Raquel Burgos Cuellar", "plazo": "", "tasa": null, "telefono": ""}, {"cierre": null, "detalle": "Luis Fernando · Leo", "estado": "", "fin": "2026-05-12", "inicio": "2026-04-12", "moneda": "Bs", "monto": 1000, "nombre": "Carolina Balcazar", "plazo": "1 Mes", "tasa": null, "telefono": ""}, {"cierre": null, "detalle": "Moto Galval · https://maps.app.goo.gl/4LroCRRWK1q2aTcR8 · Leo · Pago 5 mil 10/03 solo debe de los intereses Placa 6916BDY", "estado": "", "fin": "2026-04-24", "inicio": "2026-03-10", "moneda": "Bs", "monto": 2000, "nombre": "Adriana Rojas Cespedes", "plazo": "4 Meses", "tasa": 0.2, "telefono": "75293884"}, {"cierre": null, "detalle": "", "estado": "", "fin": null, "inicio": "2026-05-12", "moneda": "Bs", "monto": 900, "nombre": "Raquel Burgos Cuellar", "plazo": "", "tasa": 0.1, "telefono": ""}, {"cierre": null, "detalle": "Garantía Hipotecaria", "estado": "", "fin": "2024-10-16", "inicio": "2023-12-16", "moneda": "Bs", "monto": 36000, "nombre": "Alejandra Sirley Rojas Cuellar", "plazo": "6 Meses", "tasa": 0.03, "telefono": "67722408"}, {"cierre": null, "detalle": "", "estado": "", "fin": null, "inicio": "2026-01-15", "moneda": "Bs", "monto": 2250, "nombre": "Alejandra Rojas", "plazo": "", "tasa": null, "telefono": ""}, {"cierre": null, "detalle": "Moto Honda 6925YKX · Waira · Paga en Septiembre", "estado": "", "fin": "2026-07-29", "inicio": "2026-03-27", "moneda": "$us", "monto": 900, "nombre": "Luis Claudio Zabala Serrano", "plazo": "6 Meses", "tasa": 0.1, "telefono": "62214590"}, {"cierre": null, "detalle": "Moto Maruti 250 2025 · Pagara en Julio los dos meses Se presto 10.000 Bs se cobró el 1er mes de interés más 200 Bs de gastos Dr. y Notaria", "estado": "", "fin": "2025-11-09", "inicio": "2025-08-09", "moneda": "Bs", "monto": 11200, "nombre": "Jorge Melvin Rueda Fernandez", "plazo": "3 Meses", "tasa": 0.1, "telefono": "72090988"}, {"cierre": "2026-08-26", "detalle": "Primo · Sandra · Sandra me dio 5.000 Bs", "estado": "", "fin": "2026-05-17", "inicio": "2026-04-16", "moneda": "Bs", "monto": 10000, "nombre": "Juan Carlos Ayllon Balcázar", "plazo": "1 Meses", "tasa": 0.1, "telefono": ""}, {"cierre": "2026-08-28", "detalle": "Primo · Sandra · Sandra me dio 5.000 Bs", "estado": "", "fin": "2026-08-15", "inicio": "2026-08-02", "moneda": "$us", "monto": 500, "nombre": "Juan Carlos Ayllon Balcázar", "plazo": "1 Meses", "tasa": 0.1, "telefono": ""}, {"cierre": "2026-09-04", "detalle": "Sandra · Devuelve en 2 semanas", "estado": "", "fin": "2026-08-19", "inicio": "2026-08-05", "moneda": "Bs", "monto": 2500, "nombre": "Claudia Cecilia Viruez Manrique", "plazo": "15 Dias", "tasa": 0.05, "telefono": ""}, {"cierre": "2026-09-10", "detalle": "Paga hoy Mujer Judith · Vagoneta Dong Feng · https://maps.app.goo.gl/TaybWPeWfjjy3aLS9 · Mujer Judith", "estado": "", "fin": "2026-09-10", "inicio": "2026-08-13", "moneda": "$us", "monto": 600, "nombre": "Gabril Ramirez", "plazo": "15 Dias", "tasa": 0.15, "telefono": ""}, {"cierre": "2026-09-12", "detalle": "Auto NisSan 3007 XGN · PAGA YAA · Hasta eñ 3' de agosto paga · Erika Wayra", "estado": "", "fin": "2026-09-11", "inicio": "2026-04-14", "moneda": "Bs", "monto": 15000, "nombre": "Jose Edy Adrian Gutierrez", "plazo": "6 Meses", "tasa": 0.1, "telefono": "62678760"}, {"cierre": "2026-09-12", "detalle": "Auto NisSan 3007 XGN · PAGA YAA · Leo", "estado": "", "fin": "2026-09-11", "inicio": "2026-04-27", "moneda": "Bs", "monto": 5000, "nombre": "Jose Edy Adrian Gutierrez", "plazo": "6 Meses", "tasa": 0.1, "telefono": "62678760"}, {"cierre": "2026-09-17", "detalle": "Honda CR-V · El pago abogado y notario yo di 1,300 $us", "estado": "", "fin": "2026-09-17", "inicio": "2026-08-03", "moneda": "$us", "monto": 1300, "nombre": "Mario Fernando Perez Pardo", "plazo": "6 Meses", "tasa": 0.1, "telefono": "69538775"}, {"cierre": "2026-09-17", "detalle": "Honda CR-V · Di 400 $us · Leo", "estado": "", "fin": "2026-09-17", "inicio": "2026-08-28", "moneda": "$us", "monto": 500, "nombre": "Mario Fernando Perez Pardo", "plazo": "12 Dias", "tasa": 0.1, "telefono": "69538775"}, {"cierre": "2026-09-17", "detalle": "Toyota Succer · El pago abogado y notario yo di 1,300 $us · https://maps.app.goo.gl/QRxVE38ZPMT7piAW7", "estado": "", "fin": "2026-10-02", "inicio": "2026-09-02", "moneda": "$us", "monto": 2300, "nombre": "Eddy Flores Catorceno", "plazo": "1 Mese", "tasa": 0.1, "telefono": "72738209"}, {"cierre": "2026-10-06", "detalle": "Personal", "estado": "", "fin": "2026-10-05", "inicio": "2026-09-16", "moneda": "Bs", "monto": 1500, "nombre": "Carolina Balcazar", "plazo": "1", "tasa": 0.05, "telefono": ""}, {"cierre": "2026-10-09", "detalle": "Personal · Devuelve en1 mes", "estado": "", "fin": "2026-10-03", "inicio": "2026-09-03", "moneda": "Bs", "monto": 500, "nombre": "Chiquilina Ayllon Balcazar", "plazo": "2 Mes", "tasa": 0.1, "telefono": ""}, {"cierre": "2026-10-15", "detalle": "Terreno · Pago 35,000 Bs 22/09/26 saldo 11,500 Bs Se pago el 16/10", "estado": "", "fin": "2026-11-11", "inicio": "2026-09-22", "moneda": "Bs", "monto": 11500, "nombre": "Rodrigo Quispe Mamani", "plazo": "6 Meses", "tasa": 0.1, "telefono": ""}, {"cierre": "2026-10-19", "detalle": "Personal · Por los mesones 2,950 Bs y transporte 100 Bs · Leo", "estado": "", "fin": "2026-10-19", "inicio": "2026-10-15", "moneda": "Bs", "monto": 3000, "nombre": "Arq. Fernando Mercado Perez", "plazo": "15 Dias", "tasa": 0.1, "telefono": "77044238"}]}};
+const LocalDB = (() => {
+  const KEY = 'misPrestamos.datos.v1';
+  let store = {}; const subs = [];
+  const clone = o => JSON.parse(JSON.stringify(o));
+  const colOf = p => p.split('/').slice(0, -1).join('/');
+  function fromBackup(b){
+    const st = {};
+    ['clients', 'loans', 'payments', 'notes'].forEach(c => Object.entries(b[c] || {}).forEach(([id, d]) => { st[c + '/' + id] = clone(d); }));
+    const items = Array.isArray(b.archive) ? b.archive : ((b.archive && b.archive.items) || []);
+    st['archive/all'] = {items:clone(items)};
+    if (b.cfg && Object.keys(b.cfg).length) st['config/ajustes'] = clone(b.cfg);
+    return st;
+  }
+  function persist(){ try { localStorage.setItem(KEY, JSON.stringify(store)); } catch (e) { throw new Error('No se pudo guardar en este navegador (almacenamiento lleno o bloqueado).'); } }
+  function load(){
+    let raw = null; try { raw = localStorage.getItem(KEY); } catch (e) {}
+    if (raw){ try { store = JSON.parse(raw); return; } catch (e) {} }
+    store = fromBackup(SEED); try { persist(); } catch (e) {}
+  }
+  const snapDoc = path => { const d = store[path]; return {id:path.split('/').pop(), exists:d !== undefined, data:() => d === undefined ? undefined : clone(d)}; };
+  const snapCol = col => { const docs = Object.keys(store).filter(p => colOf(p) === col).map(snapDoc); return {docs, size:docs.length, empty:!docs.length}; };
+  const notify = path => subs.forEach(s => { if (s.type === 'doc' && s.path === path) s.fn(snapDoc(path)); if (s.type === 'col' && s.path === colOf(path)) s.fn(snapCol(s.path)); });
+  const notifyAll = () => subs.forEach(s => s.fn(s.type === 'doc' ? snapDoc(s.path) : snapCol(s.path)));
+  const docRef = path => ({
+    id:path.split('/').pop(), path,
+    get: async () => snapDoc(path),
+    set: async data => { const prev = store[path]; store[path] = clone(data); try { persist(); } catch (e) { if (prev === undefined) delete store[path]; else store[path] = prev; throw e; } setTimeout(() => notify(path), 0); },
+    delete: async () => { const prev = store[path]; delete store[path]; try { persist(); } catch (e) { store[path] = prev; throw e; } setTimeout(() => notify(path), 0); },
+    onSnapshot: fn => { const s = {type:'doc', path, fn}; subs.push(s); setTimeout(() => fn(snapDoc(path)), 0); return () => {}; }
+  });
+  const colRef = col => ({ path:col, doc:id => docRef(col + '/' + id), onSnapshot: fn => { const s = {type:'col', path:col, fn}; subs.push(s); setTimeout(() => fn(snapCol(col)), 0); return () => {}; } });
+  window.addEventListener('storage', e => { if (e.key === KEY){ load(); notifyAll(); } });
+  load();
+  return {doc:docRef, collection:colRef, replaceAll(b){ const prev = store; store = fromBackup(b); try { persist(); } catch (e) { store = prev; throw e; } notifyAll(); }};
+})();
+
+/* ================= arranque ================= */
+async function init(){
+  $('#nav-side').innerHTML = navHTML(''); $('#nav-tab').innerHTML = navHTML('');
+  try { db = LocalDB; canWrite = true; subscribeAll(); }
+  catch (e){ fatal(e); }
+}
+init();
+})();
+</script>
+</body>
+</html>
